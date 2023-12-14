@@ -1,7 +1,20 @@
-# A2Net-SCD
-This repository contains a simple Python implementation of semantic change detection in remote sensing images based on [A2Net](https://ieeexplore.ieee.org/abstract/document/10034814).
+# SCD
 
+## 1. Introduction
+Here is a framework for semantic change detection based on Pytorch.
 
+Supported semantic change detection models:
+- [x] [A2Net](https://ieeexplore.ieee.org/abstract/document/10034814)
+- [x] [SCanNet](https://arxiv.org/abs/2212.05245)
+- [x] [TED](https://arxiv.org/abs/2212.05245)
+- [x] [BiSRNet](https://ieeexplore.ieee.org/document/9721305)
+- [x] [SSCDL](https://ieeexplore.ieee.org/document/9721305)
+
+Supported semantic change detection datasets:
+- [x] [SECOND](https://ieeexplore.ieee.org/abstract/document/9555824)
+- [x] [Landsat-SCD](https://figshare.com/articles/figure/Landsat-SCD_dataset_zip/19946135/1)
+
+## 2. Usage
 + Prepare the data:
     - Download datasets [SECOND](https://ieeexplore.ieee.org/abstract/document/9555824), and [Landsat-SCD](https://figshare.com/articles/figure/Landsat-SCD_dataset_zip/19946135/1)
     - The pre-processed datasets can be obtained from [SECOND](http://www.captain-whu.com/PROJECT/SCD/), and the train and test list can be  downloaded from [list](https://github.com/ggsDing/Bi-SRNet/tree/main/datasets).
@@ -29,3 +42,23 @@ This repository contains a simple Python implementation of semantic change detec
 + Train/Test
     - `sh train.sh`
     - `sh test.sh`
+
+### 3. Acknowledgment
+This repository is built with the help of the projects [BIT_CD](https://github.com/justchenhao/BIT_CD), 
+[SCanNet](https://github.com/ggsDing/SCanNet), 
+and [SRSCDF](https://github.com/walking-shadow/Simple-Remote-Sensing-Change-Detection-Framework) for academic use only.
+
+### 4. Citation
+
+Please cite our paper if you find the work useful:
+
+    @article{Li_2023_A2Net,
+         author={Li, Zhenglai and Tang, Chang and Liu, Xinwang and Zhang, Wei and Dou, Jie and Wang, Lizhe and Zomaya, Albert Y.},
+        journal={IEEE Transactions on Geoscience and Remote Sensing}, 
+        title={Lightweight Remote Sensing Change Detection With Progressive Feature Aggregation and Supervised Attention}, 
+        year={2023},
+        volume={61},
+        number={},
+        pages={1-12},
+        doi={10.1109/TGRS.2023.3241436}
+        }
