@@ -48,18 +48,18 @@ class AverageMeter(object):
 
 
 ###################      cm metrics      ###################
-class ConfuseMatrixMeter(AverageMeter):
+class SCConfuseMatrixMeter(AverageMeter):
     """Computes and stores the average and current value"""
 
     def __init__(self, n_class):
-        super(ConfuseMatrixMeter, self).__init__()
+        super(SCConfuseMatrixMeter, self).__init__()
         self.n_class = n_class
 
     def update_cm(self, pr, gt, weight=1):
         """获得当前混淆矩阵，并计算当前F1得分，并更新混淆矩阵"""
         val = get_confuse_matrix(num_classes=self.n_class, label_gts=gt, label_preds=pr)
         self.update(val, weight)
-        current_score = cm2Iou(val)
+        current_score = cm2Score(val)
         return current_score
 
     def get_scores(self):
@@ -73,7 +73,7 @@ def harmonic_mean(xs):
     return harmonic_mean
 
 
-def cm2Iou(confusion_matrix):
+def cm2Score(confusion_matrix):
     hist = confusion_matrix
 
     # acc
@@ -99,10 +99,11 @@ def cm2Iou(confusion_matrix):
     change_ratio = change_label_sum / pixel_sum
     SC_TP = np.diag(hist[1:, 1:]).sum()
     SC_Precision = SC_TP / (change_pred_sum + np.finfo(np.float32).eps)
-    SC_Recall = SC_TP /(change_label_sum + np.finfo(np.float32).eps)
+    SC_Recall = SC_TP / (change_label_sum + np.finfo(np.float32).eps)
     Fscd = stats.hmean([SC_Precision, SC_Recall])
+    Score = IoU_mean * 0.3 + Sek * 0.7
 
-    return IoU_mean
+    return Score * 100
 
 
 def cal_kappa(hist):
@@ -118,6 +119,7 @@ def cal_kappa(hist):
         else:
             kappa = (po - pe) / (1 - pe)
     return kappa
+
 
 def cm2score(confusion_matrix):
     hist = confusion_matrix
@@ -146,7 +148,15 @@ def cm2score(confusion_matrix):
     SC_Precision = SC_TP / (change_pred_sum + np.finfo(np.float32).eps)
     SC_Recall = SC_TP / (change_label_sum + np.finfo(np.float32).eps)
     Fscd = stats.hmean([SC_Precision, SC_Recall])
-    score_dict = {'OA': oa, 'mIoU': IoU_mean, 'Sek': Sek, 'Fscd': Fscd}
+    Score = IoU_mean * 0.3 + Sek * 0.7
+    #
+    oa *= 100
+    Score *= 100
+    IoU_mean *= 100
+    Sek *= 100
+    Fscd *= 100
+    #
+    score_dict = {'OA': oa, 'Score': Score, 'mIoU': IoU_mean, 'Sek': Sek, 'Fscd': Fscd}
     return score_dict
 
 

@@ -131,7 +131,7 @@ class Dataset(torch.utils.data.Dataset):
             sample['image1'].contiguous(), sample['mask'].contiguous(), sample['mask1'].contiguous()
 
         return pre_image_tensor, post_image_tensor, \
-            pre_label_tensor.unsqueeze(dim=0), post_label_tensor.unsqueeze(dim=0)
+            pre_label_tensor.unsqueeze(dim=0), post_label_tensor.unsqueeze(dim=0), self.file_list[idx]
 
     def get_img_info(self, idx):
         name = self.file_list[idx]

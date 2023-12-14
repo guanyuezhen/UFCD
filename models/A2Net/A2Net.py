@@ -313,7 +313,7 @@ class Decoder_Segmentation(nn.Module):
 
 
 class BaseNet(nn.Module):
-    def __init__(self, input_nc=3, output_nc=7):
+    def __init__(self, bc_token_length=1, sc_token_length=7):
         super(BaseNet, self).__init__()
         self.backbone = MobileNetV2.mobilenet_v2(pretrained=True)
         channels = [16, 24, 32, 96, 320]
@@ -322,7 +322,7 @@ class BaseNet(nn.Module):
         self.swa = NeighborFeatureAggregation(channels, self.mid_d)
         self.tfm = TemporalFusionModule(self.mid_d, self.en_d * 2)
         self.decoder = Decoder(self.en_d * 2)
-        self.sc_decoder = Decoder_Segmentation(self.en_d * 2, output_nc)
+        self.sc_decoder = Decoder_Segmentation(self.en_d * 2, sc_token_length)
 
     def forward(self, x1, x2):
         # forward backbone resnet
@@ -346,11 +346,21 @@ class BaseNet(nn.Module):
         mask_p3 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
         mask_p4 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
         mask_p5 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
+        mask_bc = torch.cat([mask_p2, mask_p3, mask_p4, mask_p5], dim=1)
 
-        return mask_x1, mask_x2, mask_p2, mask_p3, mask_p4, mask_p5
+        return mask_x1, mask_x2, mask_bc
 
 
-def get_model(input_nc=3, output_nc=7):
-    model = BaseNet(input_nc=input_nc, output_nc=output_nc)
+def get_model(bc_token_length=1, sc_token_length=7):
+    model = BaseNet(bc_token_length=bc_token_length,
+                    sc_token_length=sc_token_length)
 
     return model
+
+
+if __name__ == '__main__':
+    t1 = torch.randn(1, 3, 512, 512)
+    t2 = torch.randn(1, 3, 512, 512)
+    models = get_model()
+    mask_t1, mask_t2, mask_bc = models(t1, t2)
+    print('1111')

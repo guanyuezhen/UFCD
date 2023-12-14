@@ -1,89 +1,77 @@
-import sys
-
-sys.path.insert(0, '.')
-import torch
-import scipy.io as scio
-import torch.backends.cudnn as cudnn
-import torch.optim.lr_scheduler
-import datasets.dataset as myDataLoader
-from utils.metric_tool import ConfuseMatrixMeter
-from PIL import Image
-import os, time
-import numpy as np
+import os
+import time
 from argparse import ArgumentParser
-from models.model import get_model
+import numpy as np
+import scipy.io as scio
+from PIL import Image
+import torch
+import torch.optim.lr_scheduler
+from models.initial_model import get_model_by_name
 from datasets.dataset import Index2Color
+import datasets.dataset as myDataLoader
+from utils.sc_metric_tool import SCConfuseMatrixMeter
+from utils.bs_metric_tool import BSConfuseMatrixMeter
 
 
 @torch.no_grad()
 def val(args, val_loader, model, pre_vis_dir, post_vis_dir):
     model.eval()
-
-    cd_evaluation = ConfuseMatrixMeter(n_class=args.num_classes)
-
+    sc_evaluation = SCConfuseMatrixMeter(n_class=args.num_classes)
+    bc_evaluation = BSConfuseMatrixMeter(n_class=2)
     total_batches = len(val_loader)
     print(len(val_loader))
 
     for iter, batched_inputs in enumerate(val_loader):
-
-        pre_img, post_img, pre_target, post_target = batched_inputs
-        img_name = val_loader.sampler.data_source.file_list[iter]
-        #
         start_time = time.time()
-        if args.onGPU == True:
-            pre_img = pre_img.cuda()
-            post_img = post_img.cuda()
-            pre_target = pre_target.cuda()
-            post_target = post_target.cuda()
-
-        pre_img_var = torch.autograd.Variable(pre_img).float()
-        post_img_var = torch.autograd.Variable(post_img).float()
-        pre_target_var = torch.autograd.Variable(pre_target).long()
-        post_target_var = torch.autograd.Variable(post_target).long()
-        binary_target_val = (pre_target_var > 0).float()
+        pre_img, post_img, pre_target, post_target, img_names = batched_inputs
+        pre_img = pre_img.cuda()
+        post_img = post_img.cuda()
+        pre_target = pre_target.cuda()
+        post_target = post_target.cuda()
+        binary_target = (pre_target > 0).float()
 
         # run the model
-        pre_mask, post_mask, mask_p2, mask_p3, mask_p4, mask_p5 = model(pre_img_var, post_img_var)
-        change_mask = mask_p2
+        pre_mask, post_mask, change_mask = model(pre_img, post_img)
 
-        # torch.cuda.synchronize()
         time_taken = time.time() - start_time
 
         # save change maps
+        change_mask = change_mask[:, 0:1]
         change_mask = torch.sigmoid(change_mask)
         change_mask = torch.where(change_mask > 0.5, torch.ones_like(change_mask), torch.zeros_like(change_mask)).long()
-        pre = (torch.argmax(pre_mask, dim=1) * change_mask.squeeze())[0].cpu().numpy()
-        gt = pre_target_var[0, 0].cpu().numpy()
-        scd_map = Index2Color(pre, val_loader.dataset.ST_COLORMAP)
-        scd_map = Image.fromarray(scd_map)
-        scd_map.save(pre_vis_dir + img_name)
 
-        pre = (torch.argmax(post_mask, dim=1) * change_mask.squeeze())[0].cpu().numpy()
-        gt = post_target_var[0, 0].cpu().numpy()
-        scd_map = Index2Color(pre, val_loader.dataset.ST_COLORMAP)
-        scd_map = Image.fromarray(scd_map)
-        scd_map.save(post_vis_dir + img_name)
+        # Modify the following lines to handle the batch dimension
+        for i in range(pre_mask.size(0)):
+            pre_mask_i = pre_mask[i:i + 1]
+            post_mask_i = post_mask[i:i + 1]
+            change_mask_i = change_mask[i:i + 1]
+            pre = (torch.argmax(pre_mask_i, dim=1) * change_mask_i.squeeze(1))[0].cpu().numpy()
+            scd_map = Index2Color(pre, val_loader.dataset.ST_COLORMAP)
+            scd_map = Image.fromarray(scd_map)
+            scd_map.save(pre_vis_dir + img_names[i])
+
+            pre = (torch.argmax(post_mask_i, dim=1) * change_mask_i.squeeze(1))[0].cpu().numpy()
+            scd_map = Index2Color(pre, val_loader.dataset.ST_COLORMAP)
+            scd_map = Image.fromarray(scd_map)
+            scd_map.save(post_vis_dir + img_names[i])
 
         # Computing Performance
         pre_mask = torch.argmax(pre_mask, dim=1)
         post_mask = torch.argmax(post_mask, dim=1)
-        mask = (torch.cat(
-            [pre_mask * change_mask.squeeze().long(),
-             post_mask * change_mask.squeeze().long()], dim=0
-        ))
-        mask_gt = torch.cat([pre_target_var, post_target_var], dim=0)
-        Iou = cd_evaluation.update_cm(pr=mask.cpu().numpy(), gt=mask_gt.cpu().numpy())
-
+        mask = torch.cat([pre_mask * change_mask.squeeze().long(), post_mask * change_mask.squeeze().long()], dim=0)
+        mask_gt = torch.cat([pre_target[:, 0], post_target[:, 0]], dim=0)
+        o_score = sc_evaluation.update_cm(pr=mask.cpu().numpy(), gt=mask_gt.cpu().numpy())
+        f1 = bc_evaluation.update_cm(pr=change_mask.cpu().numpy(), gt=binary_target.cpu().numpy())
         if iter % 5 == 0:
-            print('\r[%d/%d] IoU: %3f time: %.3f' % (iter, total_batches, Iou, time_taken),
-                  end='')
+            print('\r[%d/%d] Score: %3f time: %.3f' % (iter, total_batches, o_score, time_taken), end='')
 
-    scores = cd_evaluation.get_scores()
+    sc_scores = sc_evaluation.get_scores()
+    bc_scores = bc_evaluation.get_scores()
 
-    return scores
+    return sc_scores, bc_scores
 
 
-def val_change_detection(args):
+def train_val_change_detection(args):
     torch.backends.cudnn.benchmark = True
     SEED = 3047
     torch.manual_seed(SEED)
@@ -98,88 +86,76 @@ def val_change_detection(args):
     else:
         raise TypeError('%s has not defined' % args.file_name)
 
-    model = get_model(input_nc=3, output_nc=args.num_classes)
+    args.save_dir = os.path.join(args.save_dir, args.model_name,
+                                 args.file_name + '_iter_' + str(args.max_steps) + '_lr_' + str(args.lr) + '/')
+    args.pre_vis_dir = './predict/' + args.model_name + '/' + args.file_name + '/pre/'
+    args.post_vis_dir = './predict/' + args.model_name + '/' + args.file_name + '/post/'
+    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(args.pre_vis_dir, exist_ok=True)
+    os.makedirs(args.post_vis_dir, exist_ok=True)
 
-    args.save_dir = args.save_dir + args.file_name + '_iter_' + str(args.max_steps) + '_lr_' + str(args.lr) + '/'
-
-    args.pre_vis_dir = './predict/' + args.file_name + '/pre/'
-    args.post_vis_dir = './predict/' + args.file_name + '/post/'
-
-    if not os.path.exists(args.save_dir):
-        os.makedirs(args.save_dir)
-
-    if not os.path.exists(args.pre_vis_dir):
-        os.makedirs(args.pre_vis_dir)
-
-    if not os.path.exists(args.post_vis_dir):
-        os.makedirs(args.post_vis_dir)
-
-    if args.onGPU:
-        model = model.cuda()
+    # formulate models
+    model = get_model_by_name(args.model_name, args.num_classes, args.inWidth)
+    model = model.cuda()
 
     total_params = sum([np.prod(p.size()) for p in model.parameters()])
     print('Total network parameters (excluding idr): ' + str(total_params))
 
-    if args.file_name == 'SECOND':
-        test_data = myDataLoader.Dataset("val", file_name=args.file_name, data_root=args.data_root, transform=False)
-    elif args.file_name == 'LandsatSCD':
-        test_data = myDataLoader.Dataset("test", file_name=args.file_name, data_root=args.data_root, transform=False)
-    else:
-        raise TypeError('%s has not defined' % args.file_name)
+    test_data = myDataLoader.Dataset("val", file_name=args.file_name, data_root=args.data_root, transform=False)
+    testLoader = torch.utils.data.DataLoader(test_data, shuffle=False, batch_size=args.batch_size,
+                                             num_workers=args.num_workers, pin_memory=False)
 
-    testLoader = torch.utils.data.DataLoader(
-        test_data, shuffle=False,
-        batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=False)
+    logFileLoc = os.path.join(args.save_dir, args.logFile)
+    column_width = 12  # Adjust this width based on your preference
 
-    if args.onGPU:
-        cudnn.benchmark = True
-
-    logFileLoc = args.save_dir + args.logFile
     if os.path.isfile(logFileLoc):
         logger = open(logFileLoc, 'a')
     else:
         logger = open(logFileLoc, 'w')
         logger.write("Parameters: %s" % (str(total_params)))
-        logger.write(
-            "\n%s\t%s\t%s\t%s\t%s\t%s" % ('Epoch', 'Kappa', 'IoU', 'F1', 'R', 'P'))
+        header = "\n{: ^{width}}|{: ^{width}}|{: ^{width}}|{: ^{width}}|{: ^{width}}|{: ^{width}}|{: ^{width}}|" \
+                 "{: ^{width}}|{: ^{width}}|{: ^{width}}|{: ^{width}}".format(
+            'Epoch', 'OA (sc)', 'Score (sc)', 'mIoU (sc)', 'Sek (sc)', 'Fscd (sc)',
+            'Kappa (bc)', 'IoU (bc)', 'F1 (bc)', 'Rec (bc)', 'Pre (bc)', width=column_width
+        )
+        logger.write(header)
     logger.flush()
 
     # load the model
-    model_file_name = args.save_dir + 'best_model.pth'
+    model_file_name = os.path.join(args.save_dir, 'best_model.pth')
     state_dict = torch.load(model_file_name)
     model.load_state_dict(state_dict)
-
-    score_test = val(args, testLoader, model, args.pre_vis_dir, args.post_vis_dir)
-    torch.cuda.empty_cache()
-    print("\nTest :\t OA (te) = %.4f\t mIoU (te) = %.4f\t Sek (te) = %.4f\t Fscd (te) = %.4f" \
-          % (score_test['OA'], score_test['mIoU'], score_test['Sek'], score_test['Fscd']))
-    logger.write("\n%s\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f"
-                 % ('Test', score_test['OA'], score_test['mIoU'], score_test['Sek'], score_test['Fscd']))
+    sc_score_test, bc_score_test = val(args, testLoader, model, args.pre_vis_dir, args.post_vis_dir)
+    print("\nTest :\t OA (te) = %.2f\t mIoU (te) = %.2f\t Sek (te) = %.2f\t Fscd (te) = %.2f" \
+          % (sc_score_test['OA'], sc_score_test['mIoU'], sc_score_test['Sek'], sc_score_test['Fscd']))
+    test_line = "\n{: ^{width}}|{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}|" \
+                "{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}|{: ^{width}.2f}".format(
+        'Test', sc_score_test['OA'], sc_score_test['Score'], sc_score_test['mIoU'], sc_score_test['Sek'],
+        sc_score_test['Fscd'], bc_score_test['Kappa'], bc_score_test['IoU'], bc_score_test['F1'],
+        bc_score_test['recall'], bc_score_test['precision'], width=column_width
+    )
+    logger.write(test_line)
     logger.flush()
-    scio.savemat(args.pre_vis_dir + 'results.mat', score_test)
-
+    scio.savemat(os.path.join(args.pre_vis_dir, 'sc_results.mat'), sc_score_test)
+    scio.savemat(os.path.join(args.pre_vis_dir, 'bc_results.mat'), bc_score_test)
     logger.close()
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--file_name', default="SECOND", help='Data directory')
-    parser.add_argument('--inWidth', type=int, default=512, help='Width of RGB image')
-    parser.add_argument('--inHeight', type=int, default=512, help='Height of RGB image')
+    parser.add_argument('--model_name', default="SSCDL", help='Data directory')
+    parser.add_argument('--file_name', default="LandsatSCD", help='Data directory')
+    parser.add_argument('--inWidth', type=int, default=416, help='Width of RGB image')
+    parser.add_argument('--inHeight', type=int, default=416, help='Height of RGB image')
     parser.add_argument('--max_steps', type=int, default=10000, help='Max. number of iterations')
     parser.add_argument('--num_workers', type=int, default=4, help='No. of parallel threads')
-    parser.add_argument('--batch_size', type=int, default=1, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--lr', type=float, default=5e-4, help='Initial learning rate')
-    parser.add_argument('--lr_mode', default='poly', help='Learning rate policy')
     parser.add_argument('--save_dir', default='./weights/', help='Directory to save the results')
-    parser.add_argument('--logFile', default='trainValLog.txt',
-                        help='File that stores the training and validation logs')
-    parser.add_argument('--onGPU', default=True, type=lambda x: (str(x).lower() == 'true'),
-                        help='Run on CPU or GPU. If TRUE, then GPU.')
-    parser.add_argument('--weight', default='', type=str, help='pretrained weight, can be a non-strict copy')
+    parser.add_argument('--logFile', default='trainLog.txt', help='File that stores the training and validation logs')
 
     args = parser.parse_args()
     print('Called with args:')
     print(args)
 
-    val_change_detection(args)
+    train_val_change_detection(args)

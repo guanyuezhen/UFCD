@@ -1,117 +1,33 @@
-import torch
-import torch.nn.functional as F
-from torch.autograd import Variable
 import torch.nn as nn
+import torch.nn.functional as F
+import torch
+from typing import Optional, Union
 
 
-# Recommend
-class CrossEntropyLoss2d(nn.Module):
-    def __init__(self, weight=None, ignore_index=-1):
-        super(CrossEntropyLoss2d, self).__init__()
-        self.nll_loss = nn.NLLLoss(weight=weight, ignore_index=ignore_index,
-                                   reduction='mean')
-
-    def forward(self, inputs, targets):
-        return self.nll_loss(F.log_softmax(inputs, dim=1), targets)
-
-
-# this may be unstable sometimes.Notice set the size_average
-def CrossEntropy2d(input, target, weight=None, size_average=False):
-    # input:(n, c, h, w) target:(n, h, w)
-    n, c, h, w = input.size()
-
-    input = input.transpose(1, 2).transpose(2, 3).contiguous()
-    input = input[target.view(n, h, w, 1).repeat(1, 1, 1, c) >= 0].view(-1, c)
-
-    target_mask = target >= 0
-    target = target[target_mask]
-    # loss = F.nll_loss(F.log_softmax(input), target, weight=weight, size_average=False)
-    loss = F.cross_entropy(input, target, weight=weight, size_average=False)
-    if size_average:
-        loss /= target_mask.sum().data[0]
-
-    return loss
+# def BCEDiceLoss(pres, gts):
+#     pres = torch.sigmoid(pres)
+#     bce = F.binary_cross_entropy(pres, gts)
+#     inter = (pres * gts).sum()
+#     eps = 1e-5
+#     dice = (2 * inter + eps) / (pres.sum() + gts.sum() + eps)
+#
+#     return bce + 1 - dice
 
 
-def weighted_BCE(output, target, weight_pos=None, weight_neg=None):
-    output = torch.clamp(output, min=1e-8, max=1 - 1e-8)
+class DeepSupervisionLoss(nn.Module):
+    def __init__(self):
+        super(DeepSupervisionLoss, self).__init__()
+        self.BCEDiceLoss = BinaryCrossEntropyDiceLoss()
 
-    if weight_pos is not None:
-        loss = weight_pos * (target * torch.log(output)) + \
-               weight_neg * ((1 - target) * torch.log(1 - output))
-    else:
-        loss = target * torch.log(output) + (1 - target) * torch.log(1 - output)
+    def forward(self, pres, gts):
+        if isinstance(gts, tuple):
+            gts = gts[0]
+        b, n, h, w = pres.size()
+        loss = 0
+        for i in range(n):
+            loss += self.BCEDiceLoss(pres[:, i:i + 1, :, :], gts)
 
-    return torch.neg(torch.mean(loss))
-
-
-def weighted_BCE_logits(logit_pixel, truth_pixel, weight_pos=0.25, weight_neg=0.75):
-    logit = logit_pixel.view(-1)
-    truth = truth_pixel.view(-1)
-    assert (logit.shape == truth.shape)
-
-    loss = F.binary_cross_entropy_with_logits(logit, truth, reduction='none')
-
-    pos = (truth > 0.5).float()
-    neg = (truth < 0.5).float()
-    pos_num = pos.sum().item() + 1e-12
-    neg_num = neg.sum().item() + 1e-12
-    loss = (weight_pos * pos * loss / pos_num + weight_neg * neg * loss / neg_num).sum()
-
-    return loss
-
-
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.5, gamma=2, weight=None, ignore_index=255):
-        super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.weight = weight
-        self.ignore_index = ignore_index
-        self.ce_fn = nn.CrossEntropyLoss(weight=self.weight, ignore_index=self.ignore_index)
-
-    def forward(self, preds, labels):
-        logpt = -self.ce_fn(preds, labels)
-        pt = torch.exp(logpt)
-        loss = -((1 - pt) ** self.gamma) * self.alpha * logpt
-        return loss
-
-
-class FocalLoss2d(nn.Module):
-    def __init__(self, gamma=0, weight=None, size_average=True, ignore_index=-1):
-        super(FocalLoss2d, self).__init__()
-        self.gamma = gamma
-        self.weight = weight
-        self.size_average = size_average
-        self.ignore_index = ignore_index
-
-    def forward(self, input, target):
-        if input.dim() > 2:
-            input = input.contiguous().view(input.size(0), input.size(1), -1)
-            input = input.transpose(1, 2)
-            input = input.contiguous().view(-1, input.size(2)).squeeze()
-        if target.dim() == 4:
-            target = target.contiguous().view(target.size(0), target.size(1), -1)
-            target = target.transpose(1, 2)
-            target = target.contiguous().view(-1, target.size(2)).squeeze()
-        elif target.dim() == 3:
-            target = target.view(-1)
-        else:
-            target = target.view(-1, 1)
-
-        # compute the negative likelyhood
-        weight = Variable(self.weight)
-        logpt = -F.cross_entropy(input, target, ignore_index=self.ignore_index)
-        pt = torch.exp(logpt)
-
-        # compute the loss
-        loss = -((1 - pt) ** self.gamma) * logpt
-
-        # averaging (or not) loss
-        if self.size_average:
-            return loss.mean()
-        else:
-            return loss.sum()
+        return loss / n
 
 
 class ChangeSimilarity(nn.Module):
@@ -141,132 +57,448 @@ class ChangeSimilarity(nn.Module):
         return loss
 
 
-class ChangeSalience(nn.Module):
-    """input: x1, x2 multi-class predictions, c = class_num
-       label_change: changed part
+# binary loss
+class BinaryJaccardLoss(nn.Module):
+    """
+    binary Jaccard loss,iou loss
     """
 
-    def __init__(self, reduction='mean'):
-        super(ChangeSimilarity, self).__init__()
-        self.loss_f = nn.MSELoss(reduction=reduction)
+    def __init__(self):
+        super(BinaryJaccardLoss, self).__init__()
+        self.smooth = 1e-5
+        self.eps = 1e-7
 
-    def forward(self, x1, x2, label_change):
-        b, c, h, w = x1.size()
-        x1 = F.softmax(x1, dim=1)[:, 0, :, :]
-        x2 = F.softmax(x2, dim=1)[:, 0, :, :]
-
-        loss = self.loss_f(x1, x2.detach()) + self.loss_f(x2, x1.detach())
-        return loss * 0.5
-
-
-def pix_loss(output, target, pix_weight, ignore_index=None):
-    # Calculate log probabilities
-    if ignore_index is not None:
-        active_pos = 1 - (target == ignore_index).unsqueeze(1).cuda().float()
-        pix_weight *= active_pos
-
-    batch_size, _, H, W = output.size()
-    logp = F.log_softmax(output, dim=1)
-    # Gather log probabilities with respect to target
-    logp = logp.gather(1, target.view(batch_size, 1, H, W))
-    # Multiply with weights
-    weighted_logp = (logp * pix_weight).view(batch_size, -1)
-    # Rescale so that loss is in approx. same interval
-    weighted_loss = weighted_logp.sum(1) / pix_weight.view(batch_size, -1).sum(1)
-    # Average over mini-batch
-    weighted_loss = -1.0 * weighted_loss.mean()
-    return weighted_loss
-
-
-def make_one_hot(input, num_classes):
-    """Convert class index tensor to one hot encoding tensor.
-    Args:
-         input: A tensor of shape [N, 1, *]
-         num_classes: An int of number of class
-    Returns:
-        A tensor of shape [N, num_classes, *]
-    """
-    shape = np.array(input.shape)
-    shape[1] = num_classes
-    shape = tuple(shape)
-    result = torch.zeros(shape)
-    result = result.scatter_(1, input.cpu(), 1)
-
-    return result
+    def forward(self, y_pred_logits, y_true):
+        # y_pred = F.logsigmoid(y_pred_logits).exp()
+        y_pred = torch.sigmoid(y_pred_logits)
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        y_pred = y_pred.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        intersection = (y_pred * y_true).sum()
+        dsc = (intersection + self.smooth) / (y_pred.sum() + y_true.sum() - intersection + self.smooth).clamp_min(
+            self.eps)
+        loss = 1. - dsc
+        return loss.mean()
 
 
 class BinaryDiceLoss(nn.Module):
-    """Dice loss of binary class
-    Args:
-        smooth: A float number to smooth loss, and avoid NaN error, default: 1
-        p: Denominator value: \sum{x^p} + \sum{y^p}, default: 2
-        predict: A tensor of shape [N, *]
-        target: A tensor of shape same with predict
-        reduction: Reduction method to apply, return mean over batch if 'mean',
-            return sum if 'sum', return a tensor of shape [N,] if 'none'
-    Returns:
-        Loss tensor according to arg reduction
-    Raise:
-        Exception if unexpected reduction
+    """
+    binary dice loss
     """
 
-    def __init__(self, smooth=1, p=2, reduction='mean'):
+    def __init__(self):
         super(BinaryDiceLoss, self).__init__()
-        self.smooth = smooth
-        self.p = p
-        self.reduction = reduction
+        self.smooth = 1e-5
+        self.eps = 1e-7
 
-    def forward(self, predict, target):
-        assert predict.shape[0] == target.shape[0], "predict & target batch size don't match"
-        predict = predict.contiguous().view(predict.shape[0], -1)
-        target = target.contiguous().view(target.shape[0], -1)
-
-        num = torch.sum(torch.mul(predict, target), dim=1) + self.smooth
-        den = torch.sum(predict.pow(self.p) + target.pow(self.p), dim=1) + self.smooth
-
-        loss = 1 - num / den
-
-        if self.reduction == 'mean':
-            return loss.mean()
-        elif self.reduction == 'sum':
-            return loss.sum()
-        elif self.reduction == 'none':
-            return loss
-        else:
-            raise Exception('Unexpected reduction {}'.format(self.reduction))
+    def forward(self, y_pred_logits, y_true):
+        # y_pred = F.logsigmoid(y_pred_logits).exp()
+        y_pred = torch.sigmoid(y_pred_logits)
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        y_pred = y_pred.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        intersection = (y_pred * y_true).sum()
+        dsc = (2. * intersection + self.smooth) / (y_pred.sum() + y_true.sum() + self.smooth).clamp_min(self.eps)
+        loss = 1. - dsc
+        return loss.mean()
 
 
-class DiceLoss(nn.Module):
-    """Dice loss, need one hot encode input
-    Args:
-        weight: An array of shape [num_classes,]
-        ignore_index: class index to ignore
-        predict: A tensor of shape [N, C, *]
-        target: A tensor of same shape with predict
-        other args pass to BinaryDiceLoss
-    Return:
-        same as BinaryDiceLoss
+class BinaryELDiceLoss(nn.Module):
+    """
+    binary Exponential Logarithmic Dice loss
     """
 
-    def __init__(self, weight=None, ignore_index=None, **kwargs):
-        super(DiceLoss, self).__init__()
-        self.kwargs = kwargs
-        self.weight = weight
+    def __init__(self):
+        super(BinaryELDiceLoss, self).__init__()
+        self.smooth = 1e-5
+        self.eps = 1e-7
+
+    def forward(self, y_pred_logits, y_true):
+        y_pred = torch.sigmoid(y_pred_logits)
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        y_pred = y_pred.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        intersection = (y_pred * y_true).sum()
+        dsc = (2. * intersection + self.smooth) / (y_pred.sum() + y_true.sum() + self.smooth).clamp_min(self.eps)
+        return torch.clamp((torch.pow(-torch.log(dsc + self.smooth), 0.3)).mean(), 0, 2)
+
+
+class BinarySSLoss(nn.Module):
+    """
+    binary Sensitivity-Specifity loss
+    """
+
+    def __init__(self):
+        super(BinarySSLoss, self).__init__()
+        self.smooth = 1e-5
+        self.r = 0.1  # weight parameter in SS paper
+
+    def forward(self, y_pred_logits, y_true):
+        # y_pred = F.logsigmoid(y_pred_logits).exp()
+        y_pred = torch.sigmoid(y_pred_logits)
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        y_pred = y_pred.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        bg_y_true = 1 - y_true
+        squared_error = (y_pred - y_true) ** 2
+        specificity_part = (squared_error * y_true).sum() / (self.smooth + y_true.sum())
+        sensitivity_part = (squared_error * bg_y_true).sum() / (self.smooth + bg_y_true.sum())
+        ss = self.r * specificity_part + (1 - self.r) * sensitivity_part
+        return ss.mean()
+
+
+class BinaryTverskyLoss(nn.Module):
+    """
+    binary tversky loss,paper: https://arxiv.org/pdf/1706.05721.pdf
+    """
+
+    def __init__(self):
+        super(BinaryTverskyLoss, self).__init__()
+        self.smooth = 1e-5
+        self.alpha = 0.3
+        self.beta = 0.7
+
+    def forward(self, y_pred_logits, y_true):
+        # y_pred = F.logsigmoid(y_pred_logits).exp()
+        y_pred = torch.sigmoid(y_pred_logits)
+        bs = y_true.size(0)
+        num_classes = y_pred.size(1)
+        y_pred = y_pred.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        bg_true = 1 - y_true
+        bg_pred = 1 - y_pred
+        tp = (y_pred * y_true).sum()
+        fp = (y_pred * bg_true).sum()
+        fn = (bg_pred * y_true).sum()
+        tversky = (tp + self.smooth) / (tp + self.alpha * fp + self.beta * fn + self.smooth)
+        return torch.clamp((1 - tversky).mean(), 0, 2)
+
+
+class BinaryCrossEntropyLoss(nn.Module):
+    """
+    HybridLoss
+    This loss combines a Sigmoid layer and the BCELoss in one single class.
+    This version is more numerically stable than using a plain Sigmoid followed by a BCELoss as, by combining the operations into one layer, we take advantage of the log-sum-exp trick for numerical stability.
+    pytorch推荐使用binary_cross_entropy_with_logits,
+    将sigmoid层和binaray_cross_entropy合在一起计算比分开依次计算有更好的数值稳定性，这主要是运用了log-sum-exp技巧。
+    """
+
+    def __init__(self):
+        super(BinaryCrossEntropyLoss, self).__init__()
+
+    def forward(self, y_pred_logits, y_true):
+        bs = y_true.size(0)
+        num_classes = y_pred_logits.size(1)
+        y_pred_logits = y_pred_logits.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        bce = F.binary_cross_entropy_with_logits(y_pred_logits.float(), y_true.float())
+        return bce
+
+
+class BinaryFocalLoss(nn.Module):
+    """
+    binary focal loss
+    """
+
+    def __init__(self, alpha=0.25, gamma=2):
+        super(BinaryFocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, y_pred_logits, y_true):
+        """
+        https://discuss.pytorch.org/t/is-this-a-correct-implementation-for-focal-loss-in-pytorch/43327/4
+        """
+        bs = y_true.size(0)
+        num_classes = y_pred_logits.size(1)
+        y_pred_logits = y_pred_logits.float().contiguous().view(bs, num_classes, -1)
+        y_true = y_true.float().contiguous().view(bs, num_classes, -1)
+        BCE_loss = F.binary_cross_entropy_with_logits(y_pred_logits.float(), y_true.float(), reduction='none')
+        pt = torch.exp(-BCE_loss)  # prevents nans when probability 0
+        focal_loss = self.alpha * (1 - pt) ** self.gamma * BCE_loss
+        """
+        Original implementation from https://github.com/facebookresearch/fvcore/blob/master/fvcore/nn/focal_loss.py .
+    Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
+        """
+        # p = torch.sigmoid(y_pred_logits)
+        # p_t = p * y_true + (1 - p) * (1 - y_true)
+        # loss = BCE_loss * ((1 - p_t) ** self.gamma)
+        # if self.alpha >= 0:
+        #     alpha_t = self.alpha * y_true + (1 - self.alpha) * (1 - y_true)
+        #     focal_loss = alpha_t * loss
+        return focal_loss.mean()
+
+
+class BinaryCrossEntropyDiceLoss(nn.Module):
+    """
+    binary Dice loss + BCE loss
+    """
+
+    def __init__(self):
+        super(BinaryCrossEntropyDiceLoss, self).__init__()
+
+    def forward(self, y_pred_logits, y_true):
+        diceloss = BinaryDiceLoss()
+        dice = diceloss(y_pred_logits, y_true)
+        bceloss = BinaryCrossEntropyLoss()
+        bce = bceloss(y_pred_logits, y_true)
+        return bce + dice
+
+
+class MCC_Loss(nn.Module):
+    """
+    Compute Matthews Correlation Coefficient Loss for image segmentation task. It only supports binary mode.
+    Calculates the proposed Matthews Correlation Coefficient-based loss.
+    Args:
+        inputs (torch.Tensor): 1-hot encoded predictions
+        targets (torch.Tensor): 1-hot encoded ground truth
+    """
+
+    def __init__(self):
+        super(MCC_Loss, self).__init__()
+
+    def forward(self, inputs, targets):
+        """
+        MCC = (TP.TN - FP.FN) / sqrt((TP+FP) . (TP+FN) . (TN+FP) . (TN+FN))
+        where TP, TN, FP, and FN are elements in the confusion matrix.
+        """
+        tp = torch.sum(torch.mul(inputs, targets))
+        tn = torch.sum(torch.mul((1 - inputs), (1 - targets)))
+        fp = torch.sum(torch.mul(inputs, (1 - targets)))
+        fn = torch.sum(torch.mul((1 - inputs), targets))
+
+        numerator = torch.mul(tp, tn) - torch.mul(fp, fn)
+        denominator = torch.sqrt(
+            torch.add(tp, 1, fp)
+            * torch.add(tp, 1, fn)
+            * torch.add(tn, 1, fp)
+            * torch.add(tn, 1, fn)
+        )
+
+        # Adding 1 to the denominator to avoid divide-by-zero errors.
+        mcc = torch.div(numerator.sum(), denominator.sum() + 1.0)
+        return 1 - mcc
+
+
+# mutil loss
+
+class MutilCrossEntropyLoss(nn.Module):
+    def __init__(self, alpha, ignore_index=-100):
+        super(MutilCrossEntropyLoss, self).__init__()
+        self.alpha = alpha
         self.ignore_index = ignore_index
 
-    def forward(self, predict, target):
-        assert predict.shape == target.shape, 'predict & target shape do not match'
-        dice = BinaryDiceLoss(**self.kwargs)
-        total_loss = 0
-        predict = F.softmax(predict, dim=1)
+    def forward(self, y_pred_logits, y_true):
+        Batchsize, Channel = y_pred_logits.shape[0], y_pred_logits.shape[1]
+        y_pred_logits = y_pred_logits.float().contiguous().view(Batchsize, Channel, -1)
+        y_true = y_true.long().contiguous().view(Batchsize, -1)
+        y_true_onehot = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+        y_true_onehot = y_true_onehot.permute(0, 2, 1).float()  # H, C, H*W
+        mask = y_true_onehot.sum((0, 2)) > 0
+        loss = F.cross_entropy(y_pred_logits.float(), y_true.long(),
+                               weight=mask.to(y_pred_logits.dtype),
+                               ignore_index=self.ignore_index)
+        return loss
 
-        for i in range(target.shape[1]):
-            if i != self.ignore_index:
-                dice_loss = dice(predict[:, i], target[:, i])
-                if self.weight is not None:
-                    assert self.weight.shape[0] == target.shape[1], \
-                        'Expect weight shape [{}], get[{}]'.format(target.shape[1], self.weight.shape[0])
-                    dice_loss *= self.weights[i]
-                total_loss += dice_loss
 
-        return total_loss / target.shape[1]
+class MutilFocalLoss(nn.Module):
+    """
+    """
+
+    def __init__(self, alpha, gamma=2, torch=True):
+        super(MutilFocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+        self.torch = torch
+
+    def forward(self, y_pred_logits, y_true):
+        if torch:
+            Batchsize, Channel = y_pred_logits.shape[0], y_pred_logits.shape[1]
+            y_pred_logits = y_pred_logits.float().contiguous().view(Batchsize, Channel, -1)
+            y_true = y_true.long().contiguous().view(Batchsize, -1)
+            y_true_onehot = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+            y_true_onehot = y_true_onehot.permute(0, 2, 1).float()  # H, C, H*W
+            mask = y_true_onehot.sum((0, 2)) > 0
+            CE_loss = nn.CrossEntropyLoss(reduction='none', weight=mask.to(y_pred_logits.dtype))
+            logpt = CE_loss(y_pred_logits.float(), y_true.long())
+            pt = torch.exp(-logpt)
+            loss = (((1 - pt) ** self.gamma) * logpt).mean()
+            return loss
+
+
+class MutilDiceLoss(nn.Module):
+    """
+        multi label dice loss with weighted
+        Y_pred: [None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_pred is softmax result
+        Y_gt:[None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_gt is one hot result
+        alpha: tensor shape (C,) where C is the number of classes,eg:[0.1,1,1,1,1,1]
+        :return:
+        """
+
+    def __init__(self, alpha):
+        super(MutilDiceLoss, self).__init__()
+        self.alpha = alpha
+
+    def forward(self, y_pred_logits, y_true):
+        # Apply activations to get [0..1] class probabilities
+        # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+        # extreme values 0 and 1
+        # y_pred = y_pred_logits.log_softmax(dim=1).exp()
+        y_pred = torch.softmax(y_pred_logits, dim=1)
+        Batchsize, Channel = y_pred.shape[0], y_pred.shape[1]
+        y_pred = y_pred.float().contiguous().view(Batchsize, Channel, -1)
+        y_true = y_true.long().contiguous().view(Batchsize, -1)
+        y_true = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+        y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+        smooth = 1.e-5
+        eps = 1e-7
+        assert y_pred.size() == y_true.size()
+        intersection = torch.sum(y_true * y_pred, dim=(0, 2))
+        denominator = torch.sum(y_true + y_pred, dim=(0, 2))
+        gen_dice_coef = ((2. * intersection + smooth) / (denominator + smooth)).clamp_min(eps)
+        loss = - gen_dice_coef
+        # Dice loss is undefined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+        mask = y_true.sum((0, 2)) > 0
+        loss *= mask.to(loss.dtype)
+        return (loss * self.alpha).sum() / torch.count_nonzero(mask)
+
+
+class MutilCrossEntropyDiceLoss(nn.Module):
+    """
+    Mutil Dice loss + CE loss
+    """
+
+    def __init__(self, alpha):
+        super(MutilCrossEntropyDiceLoss, self).__init__()
+        self.alpha = alpha
+
+    def forward(self, y_pred_logits, y_true):
+        diceloss = MutilDiceLoss(self.alpha)
+        dice = diceloss(y_pred_logits, y_true)
+        celoss = MutilCrossEntropyLoss(self.alpha)
+        ce = celoss(y_pred_logits, y_true)
+        return ce + dice
+
+
+class MutilELDiceLoss(nn.Module):
+    """
+        multi label Exponential Logarithmic Dice loss with weighted
+        Y_pred: [None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_pred is softmax result
+        Y_gt:[None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_gt is one hot result
+        alpha: tensor shape (C,) where C is the number of classes,eg:[0.1,1,1,1,1,1]
+        :return:
+        """
+
+    def __init__(self, alpha):
+        super(MutilELDiceLoss, self).__init__()
+        self.alpha = alpha
+
+    def forward(self, y_pred_logits, y_true):
+        # Apply activations to get [0..1] class probabilities
+        # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+        # extreme values 0 and 1
+        # y_pred = y_pred_logits.log_softmax(dim=1).exp()
+        y_pred = torch.softmax(y_pred_logits, dim=1)
+        Batchsize, Channel = y_pred.shape[0], y_pred.shape[1]
+        y_pred = y_pred.float().contiguous().view(Batchsize, Channel, -1)
+        y_true = y_true.long().contiguous().view(Batchsize, -1)
+        y_true = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+        y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+        smooth = 1.e-5
+        eps = 1e-7
+        assert y_pred.size() == y_true.size()
+        intersection = torch.sum(y_true * y_pred, dim=(0, 2))
+        denominator = torch.sum(y_true + y_pred, dim=(0, 2))
+        gen_dice_coef = ((2. * intersection + smooth) / (denominator + smooth)).clamp_min(eps)
+        # Dice loss is undefined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+        mask = y_true.sum((0, 2)) > 0
+        gen_dice_coef *= mask.to(gen_dice_coef.dtype)
+        dice = gen_dice_coef * self.alpha
+        return torch.clamp((torch.pow(-torch.log(dice + smooth), 0.3)).sum() / torch.count_nonzero(mask), 0, 2)
+
+
+class MutilSSLoss(nn.Module):
+    """
+        multi label SS loss with weighted
+        Y_pred: [None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_pred is softmax result
+        Y_gt:[None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_gt is one hot result
+        alpha: tensor shape (C,) where C is the number of classes,eg:[0.1,1,1,1,1,1]
+        :return:
+        """
+
+    def __init__(self, alpha):
+        super(MutilSSLoss, self).__init__()
+        self.alpha = alpha
+        self.smooth = 1.e-5
+
+    def forward(self, y_pred_logits, y_true):
+        # Apply activations to get [0..1] class probabilities
+        # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+        # extreme values 0 and 1
+        # y_pred = y_pred_logits.log_softmax(dim=1).exp()
+        y_pred = torch.softmax(y_pred_logits, dim=1)
+        Batchsize, Channel = y_pred.shape[0], y_pred.shape[1]
+        y_pred = y_pred.float().contiguous().view(Batchsize, Channel, -1)
+        y_true = y_true.long().contiguous().view(Batchsize, -1)
+        y_true = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+        y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+        assert y_pred.size() == y_true.size()
+        bg_true = 1 - y_true
+        squared_error = (y_true - y_pred) ** 2
+        specificity = torch.sum(squared_error * y_true, dim=(0, 2)) / (torch.sum(y_true, dim=(0, 2)) + self.smooth)
+        sensitivity = torch.sum(squared_error * bg_true, dim=(0, 2)) / (torch.sum(y_true, dim=(0, 2)) + self.smooth)
+        ss = self.r * specificity + (1 - self.r) * sensitivity
+        mask = y_true.sum((0, 2)) > 0
+        ss *= mask.to(ss.dtype)
+        return (ss * self.alpha).sum() / torch.count_nonzero(mask)
+
+
+class MutilTverskyLoss(nn.Module):
+    """
+        multi label TverskyLoss loss with weighted
+        Y_pred: [None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_pred is softmax result
+        Y_gt:[None, self.numclass,self.image_depth, self.image_height, self.image_width],Y_gt is one hot result
+        alpha: tensor shape (C,) where C is the number of classes,eg:[0.1,1,1,1,1,1]
+        :return:
+        """
+
+    def __init__(self, alpha):
+        super(MutilTverskyLoss, self).__init__()
+        self.alpha = alpha
+        self.smooth = 1.e-5
+
+    def forward(self, y_pred_logits, y_true):
+        # Apply activations to get [0..1] class probabilities
+        # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
+        # extreme values 0 and 1
+        # y_pred = y_pred_logits.log_softmax(dim=1).exp()
+        y_pred = torch.softmax(y_pred_logits, dim=1)
+        Batchsize, Channel = y_pred.shape[0], y_pred.shape[1]
+        y_pred = y_pred.float().contiguous().view(Batchsize, Channel, -1)
+        y_true = y_true.long().contiguous().view(Batchsize, -1)
+        y_true = F.one_hot(y_true, Channel)  # N,H*W -> N,H*W, C
+        y_true = y_true.permute(0, 2, 1)  # H, C, H*W
+        assert y_pred.size() == y_true.size()
+        bg_true = 1 - y_true
+        bg_pred = 1 - y_pred
+        tp = torch.sum(y_pred * y_true, dim=(0, 2))
+        fp = torch.sum(y_pred * bg_true, dim=(0, 2))
+        fn = torch.sum(bg_pred * y_true, dim=(0, 2))
+        tversky = -(tp + self.smooth) / (tp + self.alpha * fp + self.beta * fn + self.smooth)
+        # tversky loss is undefined for non-empty classes
+        # So we zero contribution of channel that does not have true pixels
+        # NOTE: A better workaround would be to use loss term `mean(y_pred)`
+        # for this case, however it will be a modified jaccard loss
+        mask = y_true.sum((0, 2)) > 0
+        tversky *= mask.to(tversky.dtype)
+        return (tversky * self.alpha).sum() / torch.count_nonzero(mask)
