@@ -165,7 +165,7 @@ def train_val_change_detection(args):
     model = model.cuda()
 
     total_params = sum([np.prod(p.size()) for p in model.parameters()])
-    total_params = total_params / (1024 * 1024)
+    total_params = total_params / 1e6
     print('Total network parameters (excluding idr): ' + str(total_params))
     total_params_to_update = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params_to_update = total_params_to_update / (1024 * 1024)
