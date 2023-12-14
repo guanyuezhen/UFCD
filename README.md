@@ -43,12 +43,20 @@ Supported semantic change detection datasets:
     - `sh train.sh`
     - `sh test.sh`
 
-### 3. Acknowledgment
+### 3. Change Detection Results
+<p align="center">
+    <img src="assest/benchmark_results.png"/> <br />
+    <em> 
+    The best and second best results are highlighted in <font color="#FF0000">red</font> and <font color="#00B0F0">blue</font>, respectively.
+    </em>
+</p>
+
+### 4. Acknowledgment
 This repository is built with the help of the projects [BIT_CD](https://github.com/justchenhao/BIT_CD), 
 [SCanNet](https://github.com/ggsDing/SCanNet), 
 and [SRSCDF](https://github.com/walking-shadow/Simple-Remote-Sensing-Change-Detection-Framework) for academic use only.
 
-### 4. Citation
+### 5. Citation
 
 Please cite our paper if you find the work useful:
 
