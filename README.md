@@ -43,7 +43,7 @@ Supported semantic change detection datasets:
     - `sh train.sh`
     - `sh test.sh`
 
-### 3. Change Detection Results
+### 3. Change Detection Results on SECOND Dataset
 <p align="center">
     <img src="assest/benchmark_results.png"/> <br />
     <em> 
