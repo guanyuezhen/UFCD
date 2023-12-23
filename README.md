@@ -19,7 +19,7 @@ Supported semantic change detection datasets:
     - Download datasets [SECOND](https://ieeexplore.ieee.org/abstract/document/9555824), and [Landsat-SCD](https://figshare.com/articles/figure/Landsat-SCD_dataset_zip/19946135/1)
     - The pre-processed datasets can be obtained from [SECOND](http://www.captain-whu.com/PROJECT/SCD/), and the train and test list can be  downloaded from [list](https://github.com/ggsDing/Bi-SRNet/tree/main/datasets).
     - The pre-processed Landsat-SCD dataset can be obtained from [Landsat-SCD](https://drive.google.com/file/d/11CkLhakNtfaBH78SGTHxcXKNsBM524H5/view).
-    - Prepare datasets into the following structure and set their path in `train.py` and `test.py`
+    - Prepare datasets into the following structure and set their path in `./libs/datasets/get_data.py`.
     ```
     ├─Train
         ├─im1        ...jpg/png
@@ -40,8 +40,8 @@ Supported semantic change detection datasets:
     - Installing necessary packages: `pip install -r requirements.txt`
 
 + Train/Test
-    - `sh train.sh`
-    - `sh test.sh`
+    - `sh ./scripts/train.sh`
+    - `sh ./scripts/test.sh`
 
 ### 3. Change Detection Results on SECOND Dataset
 <p align="center">
