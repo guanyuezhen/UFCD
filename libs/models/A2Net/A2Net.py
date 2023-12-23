@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from . import MobileNetV2
 
 
 class NeighborFeatureAggregation(nn.Module):
@@ -311,16 +310,17 @@ class Decoder_Segmentation(nn.Module):
 
 
 class BaseNet(nn.Module):
-    def __init__(self, bc_token_length=1, sc_token_length=7):
+    def __init__(self, context_encoder, in_channels=None, channel=32, num_bc_class=1, num_sc_class=7):
         super(BaseNet, self).__init__()
-        self.backbone = MobileNetV2.mobilenet_v2(pretrained=True)
-        channels = [16, 24, 32, 96, 320]
-        self.en_d = 32
+        if in_channels is None:
+            in_channels = [16, 24, 32, 96, 320]
+        self.backbone = context_encoder
+        self.en_d = channel
         self.mid_d = self.en_d * 2
-        self.swa = NeighborFeatureAggregation(channels, self.mid_d)
+        self.swa = NeighborFeatureAggregation(in_channels, self.mid_d)
         self.tfm = TemporalFusionModule(self.mid_d, self.en_d * 2)
         self.decoder = Decoder(self.en_d * 2)
-        self.sc_decoder = Decoder_Segmentation(self.en_d * 2, sc_token_length)
+        self.sc_decoder = Decoder_Segmentation(self.en_d * 2, num_sc_class)
 
     def forward(self, x1, x2):
         # forward backbone resnet
@@ -349,16 +349,11 @@ class BaseNet(nn.Module):
         return mask_x1, mask_x2, mask_bc
 
 
-def get_model(bc_token_length=1, sc_token_length=7):
-    model = BaseNet(bc_token_length=bc_token_length,
-                    sc_token_length=sc_token_length)
+def get_model(context_encoder, in_channels, channel=32, num_bc_class=1, num_sc_class=7):
+    model = BaseNet(context_encoder=context_encoder,
+                    in_channels=in_channels,
+                    channel=channel,
+                    num_bc_class=num_bc_class,
+                    num_sc_class=num_sc_class)
 
     return model
-
-
-if __name__ == '__main__':
-    t1 = torch.randn(1, 3, 512, 512)
-    t2 = torch.randn(1, 3, 512, 512)
-    models = get_model()
-    mask_t1, mask_t2, mask_bc = models(t1, t2)
-    print('1111')

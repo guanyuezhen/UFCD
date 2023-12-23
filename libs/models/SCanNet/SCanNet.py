@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
 from .CSWin_Transformer import mit
-from timm.models.resnet import _cfg
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -68,35 +66,36 @@ class _DecoderBlock(nn.Module):
         return x
 
 
-class SSCDL(nn.Module):
-    def __init__(self, bc_token_length=1, sc_token_length=7, input_size=512):
-        super(SSCDL, self).__init__()
-        #
-        in_channels = [64, 64, 128, 256, 512]
+class SCanNet(nn.Module):
+    def __init__(self, context_encoder, in_channels=None, is_scannet=False,
+                 num_bc_class=1, num_sc_class=7, input_size=512):
+        super(SCanNet, self).__init__()
+        if in_channels is None:
+            in_channels = [64, 64, 128, 256, 512]
         de_channel_c2 = 64
         de_channel_c5 = 128
         feat_size = input_size // 4
-        # config_resnet = _cfg(url='', file='/mnt/disk_d/backbone_weights/resnet34d_ra2-f8dcfcaf.pth')
-        # self.context_encoder = timm.create_model(
-        #     'resnet34d', features_only=True, pretrained=True, pretrained_cfg=config_resnet)
-        self.context_encoder = timm.create_model('resnet18d', features_only=True, output_stride=8, pretrained=True)
+        self.context_encoder = context_encoder
+        self.is_scannet = is_scannet
         self.feature_extraction_c5 = nn.Sequential(
             nn.Conv2d(in_channels[4], de_channel_c5, kernel_size=1, bias=False),
             nn.BatchNorm2d(de_channel_c5),
             nn.ReLU()
         )
-        self.transformer = mit(img_size=feat_size, in_chans=de_channel_c5 * 3, embed_dim=de_channel_c5 * 3)
+        if is_scannet:
+            self.transformer = mit(img_size=feat_size, in_chans=de_channel_c5 * 3, embed_dim=de_channel_c5 * 3)
+
         self.Dec1 = _DecoderBlock(de_channel_c5, de_channel_c2, de_channel_c5)
         self.Dec2 = _DecoderBlock(de_channel_c5, de_channel_c2, de_channel_c5)
-        self.classifier1 = nn.Conv2d(de_channel_c5, sc_token_length, kernel_size=1)
-        self.classifier2 = nn.Conv2d(de_channel_c5, sc_token_length, kernel_size=1)
+        self.classifier1 = nn.Conv2d(de_channel_c5, num_sc_class, kernel_size=1)
+        self.classifier2 = nn.Conv2d(de_channel_c5, num_sc_class, kernel_size=1)
         self.resCD = self._make_layer(ResBlock, de_channel_c5 * 2, de_channel_c5, 6, stride=1)
         self.DecCD = _DecoderBlock(de_channel_c5, de_channel_c5, de_channel_c5, scale_ratio=2)
         self.classifierCD = nn.Sequential(
             nn.Conv2d(de_channel_c5, de_channel_c5 // 2, kernel_size=1),
             nn.BatchNorm2d(de_channel_c5 // 2),
             nn.ReLU(),
-            nn.Conv2d(de_channel_c5 // 2, bc_token_length, kernel_size=1)
+            nn.Conv2d(de_channel_c5 // 2, num_bc_class, kernel_size=1)
         )
 
         # for param in self.context_encoder.parameters():
@@ -130,9 +129,11 @@ class SSCDL(nn.Module):
         td_c2 = torch.cat([t1_c2, t2_c2], dim=1)
         td_ = self.DecCD(td_c5, td_c2)
         #
-        x = torch.cat([t1_, t2_, td_], dim=1)
-        x = self.transformer(x)
-        t1_, t2_, td_ = torch.chunk(x, 3, dim=1)
+        if self.is_scannet:
+            x = torch.cat([t1_, t2_, td_], dim=1)
+            x = self.transformer(x)
+            t1_, t2_, td_ = torch.chunk(x, 3, dim=1)
+
         #
         mask_bc = self.classifierCD(td_)
         mask_t1 = self.classifier1(t1_)
@@ -145,17 +146,8 @@ class SSCDL(nn.Module):
         return mask_t1, mask_t2, mask_bc
 
 
-def get_model(bc_token_length=1, sc_token_length=7, input_size=512):
-    model = SSCDL(bc_token_length=bc_token_length,
-                  sc_token_length=sc_token_length,
-                  input_size=input_size)
+def get_model(context_encoder, in_channels=None, is_scannet=False, num_bc_class=1, num_sc_class=7, input_size=512):
+    model = SCanNet(context_encoder=context_encoder, in_channels=in_channels, is_scannet=is_scannet,
+                    num_bc_class=num_bc_class, num_sc_class=num_sc_class, input_size=input_size)
 
     return model
-
-
-if __name__ == '__main__':
-    t1 = torch.randn(1, 3, 512, 512)
-    t2 = torch.randn(1, 3, 512, 512)
-    models = get_model()
-    mask_t1, mask_t2, mask_bc = models(t1, t2)
-    print('1111')
