@@ -1,33 +1,38 @@
 import time
-import numpy as np
 import torch
 from torch.nn.utils import clip_grad_norm_
-from libs.utils.semantic_change_detection_metric_tool import SCDConfuseMatrixMeter
-from libs.utils.binary_change_detection_metric_tool import BCDConfuseMatrixMeter
-from libs.tools.cal_preformance import compute_performance_for_model
+from libs.tools.cal_preformance import EvaluationByType
 
 
-def adjust_learning_rate(args, optimizer, iter, max_batches, lr_factor=1):
-    max_iter = max_batches * args.max_epochs
-    warm_up_iter = np.floor(max_iter * 0.1)
-    if args.lr_mode == 'poly':
-        cur_iter = iter - warm_up_iter
-        max_iter = max_iter - warm_up_iter
-        lr = args.lr * (1 - cur_iter * 1.0 / max_iter) ** 0.9
-    else:
-        raise ValueError('Unknown lr mode {}'.format(args.lr_mode))
-    if iter < warm_up_iter:
-        lr = args.lr * 0.9 * (iter + 1) / warm_up_iter + 0.1 * args.lr  # warm_up
-    lr *= lr_factor
+def adjust_learning_rate(optimizer, iter, max_batches, optimizer_cfg):
+    max_iter = max_batches * optimizer_cfg['max_epoch']
+    base_lr = optimizer_cfg['lr']
+    cur_iter = iter
+    power = optimizer_cfg['power']
+    min_lr = optimizer_cfg['min_lr']
+    warm_up_iter = optimizer_cfg['warm_up_iter']
+    warm_up_ratio = optimizer_cfg['warm_up_ratio']
+    lr_factor = optimizer_cfg['lr_factor']
+
+    coeff = (1 - cur_iter / max_iter) ** power
+    target_lr = coeff * (base_lr - min_lr) + min_lr
+
+    if warm_up_iter >= iter:
+        k = (1 - cur_iter / warm_up_iter) * (1 - warm_up_ratio)
+        target_lr = (1 - k) * target_lr
+
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    return lr
+        param_group['lr'] = target_lr * lr_factor
+
+    return target_lr
 
 
-def train(args, train_loader, model, criterion, scaler, optimizer, max_batches, cur_iter=0):
+def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optimizer, max_batches, cur_iter=0):
+    lr = optimizer_cfg['lr']
     model.train()
-    sc_evaluation = SCDConfuseMatrixMeter(n_class=args.num_classes)
-    bc_evaluation = BCDConfuseMatrixMeter(n_class=2)
+    train_evaluation = EvaluationByType(task_type=task_type,
+                                        task_cfg=task_cfg,
+                                        optimizer_cfg=optimizer_cfg)
     epoch_loss = []
 
     for iter, batched_inputs in enumerate(train_loader):
@@ -36,19 +41,12 @@ def train(args, train_loader, model, criterion, scaler, optimizer, max_batches, 
         pre_img, post_img, pre_target, post_target, img_names = batched_inputs
         pre_img, post_img, pre_target, post_target = map(lambda x: x.cuda(),
                                                          [pre_img, post_img, pre_target, post_target])
-        binary_target = (pre_target > 0).float()
 
-        lr = adjust_learning_rate(args, optimizer, iter + cur_iter, max_batches)
+        lr = adjust_learning_rate(optimizer, iter + cur_iter, max_batches, optimizer_cfg)
 
         with torch.autocast(device_type='cuda', dtype=torch.float16, enabled=True):
-            pre_mask, post_mask, change_mask = model(pre_img, post_img)
-
-            pre_mask, post_mask, change_mask = map(lambda x: x.float(), [pre_mask, post_mask, change_mask])
-            loss_scd = criterion['semantic_change_loss'](pre_mask, pre_target) \
-                       + criterion['semantic_change_loss'](post_mask, post_target)
-            loss_bcd = criterion['binary_change_loss'](change_mask, binary_target)
-            loss_sc = criterion['change_similarity_loss'](pre_mask, post_mask, binary_target)
-            loss = loss_scd * 0.5 + loss_bcd + loss_sc
+            prediction = model(pre_img, post_img)
+            loss = train_evaluation.compute_loss(prediction, pre_target, post_target)
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
@@ -59,19 +57,16 @@ def train(args, train_loader, model, criterion, scaler, optimizer, max_batches, 
 
         epoch_loss.append(loss.data.item())
         time_taken = time.time() - start_time
-        res_time = (max_batches * args.max_epochs - iter - cur_iter) * time_taken / 3600
+        res_time = (max_batches * optimizer_cfg['max_epoch'] - iter - cur_iter) * time_taken / 3600
 
-        o_score = compute_performance_for_model(change_mask, pre_mask, post_mask,
-                                                binary_target, pre_target, post_target,
-                                                sc_evaluation, bc_evaluation)
+        score_per_iter = train_evaluation.compute_performance(prediction, pre_target, post_target)
 
         if iter % 5 == 0:
             print('\riteration: [%d/%d] Score: %.2f lr: %.7f loss: %.3f time:%.3f h' % (
-                iter + cur_iter, max_batches * args.max_epochs, o_score, lr, loss.data.item(),
+                iter + cur_iter, max_batches * optimizer_cfg['max_epoch'], score_per_iter, lr, loss.data.item(),
                 res_time), end='')
 
     average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
-    sc_scores = sc_evaluation.get_scores()
-    bc_scores = bc_evaluation.get_scores()
+    score = train_evaluation.compute_pre_epoch_performance()
 
-    return average_epoch_loss_train, sc_scores, bc_scores, lr
+    return average_epoch_loss_train, score, lr
