@@ -45,7 +45,7 @@ Supported building damage assessment dataset:
     - Download dataset [xView2](https://openaccess.thecvf.com/content_CVPRW_2019/papers/cv4gc/Gupta_Creating_xBD_A_Dataset_for_Assessing_Building_Damage_from_Satellite_CVPRW_2019_paper.pdf).
     - Create the rbg mask from xView2 by using './data/xBD/preoricess_data.py'.
     - Create the image list from xView2 by using './data/xBD/capture_image_list.py'.
-    - Prepare dataset into the following structure and set its path in `./lib/configs/data_congfig.py`
+    - Prepare the dataset into the following structure and set its path in `./lib/configs/data_congfig.py`
     ```
     ├─train
         ├─images        ...jpg/png
