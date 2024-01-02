@@ -11,7 +11,7 @@ Supported semantic change detection models:
 - [x] [SSCDL](https://ieeexplore.ieee.org/document/9721305)
 
 Supported building damage assessment model:
-- [x] [ChangeOS](https://ieeexplore.ieee.org/abstract/document/10034814)
+- [x] [ChangeOS]([https://ieeexplore.ieee.org/abstract/document/10034814](https://www.sciencedirect.com/science/article/pii/S0034425721003564))
 
 Supported semantic change detection datasets:
 - [x] [SECOND](https://ieeexplore.ieee.org/abstract/document/9555824)
