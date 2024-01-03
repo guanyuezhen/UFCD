@@ -1,7 +1,6 @@
 import numpy as np
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-import random
 from .base_dataset import BaseDataset
 
 
@@ -92,6 +91,17 @@ class BDADataset(BaseDataset):
         pre_image_tensor, post_image_tensor, pre_label_tensor, post_label_tensor = sample['image'].contiguous(), \
             sample['image1'].contiguous(), sample['mask'].contiguous(), sample['mask1'].contiguous()
 
-        return pre_image_tensor, post_image_tensor, \
-            pre_label_tensor.unsqueeze(dim=0), post_label_tensor.unsqueeze(dim=0), image_id
+        data = {
+            'image': {
+                'pre_image': pre_image_tensor,
+                'post_image': post_image_tensor,
+            },
+            'label': {
+                'pre_label': pre_label_tensor.unsqueeze(dim=0),
+                'post_label': post_label_tensor.unsqueeze(dim=0),
+            },
+            'image_name': image_id,
+        }
+
+        return data
 

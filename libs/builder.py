@@ -1,24 +1,28 @@
-import timm
 import torch
 import torch.utils.data
-from timm.models.resnet import _cfg as resnet_cfg
-from timm.models.efficientnet import _cfg as efficient_cfg
-from libs.models.SCD.A2Net.A2Net import A2Net
-from libs.models.SCD.BiSRNet.BiSRNet import BiSRNet
-from libs.models.SCD.SCanNet.SCanNet import SCanNet
-from libs.models.BDA.ChangeOS.ChangeOS import ChangeOS
+from libs.backbone.get_backbone import get_backbone
+from libs.models.scd.a2net.a2net import A2Net
+from libs.models.scd.bisrnet.bisrnet import BiSRNet
+from libs.models.scd.scannet.scannet import SCanNet
+from libs.models.bda.changeos.changeos import ChangeOS
+from libs.models.bcd.a2net.a2net import A2NetBCD
+from libs.models.bcd.tfigr.tfigr import TFIGR
 from libs.configs.method_config import A2Net_CFG, A2Net18_CFG, BISRNET_CFG, SSCDL_CFG, SCANNET_CFG, TED_CFG, \
-    CHANGEOS_CFG
+    CHANGEOS_CFG, A2NetBCD_CFG, TFIGR_CFG
 from libs.datasets.scd_dataset import SCDDataset
 from libs.datasets.bda_dataset import BDADataset
-from libs.configs.data_config import SECOND_CFG, LANDSAT_CFG, XBD_CFG
+from libs.datasets.bcd_dataset import BCDDataset
+from libs.configs.data_config import SECOND_CFG, LANDSAT_CFG, XBD_CFG, LEVIR_CFG, BCDD_CFG, SYSU_CFG
 from libs.configs.dataloader_config import DATALOADER_CFG_BS_8, DATALOADER_CFG_BS_16, DATALOADER_CFG_BS_32
-from libs.logger.bda_logger import BDALogger
-from libs.logger.scd_logger import SCDLogger
+from libs.utils.logger.bda_logger import BDALogger
+from libs.utils.logger.scd_logger import SCDLogger
+from libs.utils.logger.bcd_logger import BCDLogger
 
 
 def get_model_dataset_by_name(cmd_cfg):
     METHOD_CFG_SET = {
+        'TFIGR': TFIGR_CFG,
+        'A2NetBCD': A2NetBCD_CFG,
         'A2Net': A2Net_CFG,
         'A2Net18': A2Net18_CFG,
         'BiSRNet': BISRNET_CFG,
@@ -28,6 +32,8 @@ def get_model_dataset_by_name(cmd_cfg):
         'ChangeOS': CHANGEOS_CFG,
     }
     METHOD_SET = {
+        'TFIGR': TFIGR,
+        'A2NetBCD': A2NetBCD,
         'A2Net': A2Net,
         'A2Net18': A2Net,
         'BiSRNet': BiSRNet,
@@ -39,12 +45,18 @@ def get_model_dataset_by_name(cmd_cfg):
     DATA_CFG_SET = {
         'SECOND': SECOND_CFG,
         'LandsatSCD': LANDSAT_CFG,
-        'xBD': XBD_CFG
+        'xBD': XBD_CFG,
+        'LEVIR': LEVIR_CFG,
+        'BCDD': BCDD_CFG,
+        'SYSU': SYSU_CFG,
     }
     DATA_SET = {
         'SECOND': SCDDataset,
         'LandsatSCD': SCDDataset,
-        'xBD': BDADataset
+        'xBD': BDADataset,
+        'LEVIR': BCDDataset,
+        'BCDD': BCDDataset,
+        'SYSU': BCDDataset,
     }
     DATALOADER_CFG_SET = {
         'bs_8': DATALOADER_CFG_BS_8,
@@ -54,6 +66,7 @@ def get_model_dataset_by_name(cmd_cfg):
     LOGGER_SET = {
         'bda': BDALogger,
         'scd': SCDLogger,
+        'bcd': BCDLogger,
     }
 
     model_name = cmd_cfg.model_name
@@ -124,29 +137,4 @@ def get_model_dataset_by_name(cmd_cfg):
         return logger, model, test_loader, task_type, task_cfg
 
 
-def get_backbone(backbone_name='resnet18', output_stride=32):
-    if backbone_name == 'resnet18d':
-        encoder_config = resnet_cfg(url='', file='./libs/backbone/resnet18d_ra2-48a79e06.pth')
-        context_encoder = timm.create_model('resnet18d', features_only=True,
-                                            output_stride=output_stride, pretrained=True,
-                                            pretrained_cfg=encoder_config)
-        in_channels = [64, 64, 128, 256, 512]
 
-        return context_encoder, in_channels
-
-    elif backbone_name == 'resnet34d':
-        encoder_config = resnet_cfg(url='', file='./libs/backbone/resnet34d_ra2-f8dcfcaf.pth')
-        context_encoder = timm.create_model('resnet34d', features_only=True,
-                                            output_stride=output_stride, pretrained=True,
-                                            pretrained_cfg=encoder_config)
-        in_channels = [64, 64, 128, 256, 512]
-
-        return context_encoder, in_channels
-
-    elif backbone_name == 'mobilenetv2':
-        encoder_config = efficient_cfg(url='', file='./libs/backbone/mobilenetv2_100_ra-b33bc2c4.pth')
-        context_encoder = timm.create_model('mobilenetv2_100', features_only=True, pretrained=True,
-                                            pretrained_cfg=encoder_config)
-        in_channels = [16, 24, 32, 96, 320]
-
-        return context_encoder, in_channels

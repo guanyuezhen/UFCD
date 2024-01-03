@@ -203,9 +203,9 @@ class BiSRNet(nn.Module):
         mask_t2 = F.interpolate(mask_t2, size=t1.size()[2:], mode='bilinear', align_corners=True)
 
         prediction = {
-            'change_mask': mask_bc,
-            'pre_mask': mask_t1,
-            'post_mask': mask_t2,
+            'change_mask': [mask_bc],
+            'pre_mask': [mask_t1],
+            'post_mask': [mask_t2],
         }
 
         return prediction

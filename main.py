@@ -8,17 +8,17 @@ import torch
 import torch.backends.cudnn
 import scipy.io as scio
 from libs.builder import get_model_dataset_by_name
-from libs.tools.train import train
-from libs.tools.test import test
-from libs.tools.set_seed import set_seed
+from libs.train import train
+from libs.test import test
+from libs.utils.set_seed import set_seed
 
 
 def parser_args():
     parser = argparse.ArgumentParser(description='An open source change detection toolbox based on PyTorch')
-    parser.add_argument('--data_name', default="xBD", help='Data directory')
-    parser.add_argument('--model_name', default="ChangeOS", help='Name of method')
-    parser.add_argument('--dataloader_name', default="bs_8", help='Batch size')
-    parser.add_argument('--is_train', type=int, default=1, help='Is train model')
+    parser.add_argument('--data_name', default="LEVIR", help='Data directory')
+    parser.add_argument('--model_name', default="TFIGR", help='Name of method')
+    parser.add_argument('--dataloader_name', default="bs_32", help='Batch size')
+    parser.add_argument('--is_train', type=int, default=0, help='Is train model')
     parser.add_argument('--save_dir', default='./weights/', help='Directory to save the results')
     parser.add_argument('--log_file', default='trainLog.txt', help='File that stores the training and validation logs')
     cmd_cfg = parser.parse_args()
@@ -74,6 +74,11 @@ def main():
             logger.save_model(epoch, model, score_val)
             torch.cuda.empty_cache()
 
+        state_dict = torch.load(cmd_cfg.model_file_name)
+        model.load_state_dict(state_dict)
+        score_test = test(cmd_cfg, task_type, task_cfg, test_loader, model)
+        logger.write_test(score_test)
+        scio.savemat(os.path.join(cmd_cfg.save_dir, 'results.mat'), score_test)
         logger.close_logger()
 
     else:
@@ -86,8 +91,6 @@ def main():
         total_params_to_update = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total_params_to_update = total_params_to_update / 1e6
         print('Total parameters to update: ' + str(total_params_to_update))
-        logger.write_parameters(total_params, total_params_to_update)
-        logger.write_header()
 
         state_dict = torch.load(cmd_cfg.model_file_name)
         model.load_state_dict(state_dict)

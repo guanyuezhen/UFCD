@@ -1,5 +1,54 @@
 
 
+LEVIR_CFG = {
+    'data_cfg': {
+        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/LEVIR',
+        'train_dataset': 'train',
+        'val_dataset': 'val',
+        'test_dataset': 'test',
+        'color_map': [[0, 0, 0], [255, 255, 255]],
+        'classes': ['unchanged', 'change'],
+        'image_size': [256, 256],
+    },
+    'task_type': 'bcd',
+    'task_cfg': {
+        'num_bcd_class': 1,
+    }
+}
+
+BCDD_CFG = {
+    'data_cfg': {
+        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/BCDD',
+        'train_dataset': 'train',
+        'val_dataset': 'val',
+        'test_dataset': 'test',
+        'color_map': [[0, 0, 0], [255, 255, 255]],
+        'classes': ['unchanged', 'change'],
+        'image_size': [256, 256],
+    },
+    'task_type': 'bcd',
+    'task_cfg': {
+        'num_bcd_class': 1,
+    }
+}
+
+SYSU_CFG = {
+    'data_cfg': {
+        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/SYSU',
+        'train_dataset': 'train',
+        'val_dataset': 'val',
+        'test_dataset': 'test',
+        'color_map': [[0, 0, 0], [255, 255, 255]],
+        'classes': ['unchanged', 'change'],
+        'image_size': [256, 256],
+    },
+    'task_type': 'bcd',
+    'task_cfg': {
+        'num_bcd_class': 1,
+    }
+}
+
+
 SECOND_CFG = {
     'data_cfg': {
         'data_root': '/mnt/disk_d/Change Detection/Datasets_SCD/SECOND_rgb',

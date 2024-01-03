@@ -43,8 +43,8 @@ class ChangeOS(nn.Module):
         damage_mask = F.interpolate(damage_mask, size=post_image.size()[2:], mode='bilinear', align_corners=True)
 
         prediction = {
-            'loc_mask': location_mask,
-            'cls_mask': damage_mask,
+            'loc_mask': [location_mask],
+            'cls_mask': [damage_mask],
         }
 
         return prediction

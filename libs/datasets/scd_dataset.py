@@ -23,7 +23,8 @@ class SCDDataset(BaseDataset):
         for i, cm in enumerate(self.color_map):
             self.color_map_to_label[(cm[0] * 256 + cm[1]) * 256 + cm[2]] = i
 
-        self.file_list = open(self.data_root + '/' + self.dataset + '/list/' + self.dataset + '.txt').read().splitlines()
+        self.file_list = open(
+            self.data_root + '/' + self.dataset + '/list/' + self.dataset + '.txt').read().splitlines()
         self.pre_images = [self.data_root + '/' + self.dataset + '/im1/' + x for x in self.file_list]
         self.post_images = [self.data_root + '/' + self.dataset + '/im2/' + x for x in self.file_list]
         self.pre_gts = [self.data_root + '/' + self.dataset + '/label1/' + x for x in self.file_list]
@@ -94,6 +95,16 @@ class SCDDataset(BaseDataset):
         pre_image_tensor, post_image_tensor, pre_label_tensor, post_label_tensor = sample['image'].contiguous(), \
             sample['image1'].contiguous(), sample['mask'].contiguous(), sample['mask1'].contiguous()
 
-        return pre_image_tensor, post_image_tensor, \
-            pre_label_tensor.unsqueeze(dim=0), post_label_tensor.unsqueeze(dim=0), self.file_list[idx]
+        data = {
+            'image': {
+                'pre_image': pre_image_tensor,
+                'post_image': post_image_tensor,
+            },
+            'label': {
+                'pre_label': pre_label_tensor.unsqueeze(dim=0),
+                'post_label': post_label_tensor.unsqueeze(dim=0),
+            },
+            'image_name': self.file_list[idx]
+        }
 
+        return data

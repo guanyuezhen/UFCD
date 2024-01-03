@@ -1,4 +1,45 @@
 
+A2NetBCD_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'mobilenetv2',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 32,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_epoch': 50,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
+
+TFIGR_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'resnet18d',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 64,
+        'num_grbs': 2,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_epoch': 50,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
+
 A2Net_CFG = {
     'backbone_cfg': {
         'backbone_name': 'mobilenetv2',
@@ -24,7 +65,7 @@ A2Net18_CFG = {
         'output_stride': 32
     },
     'head_cfg': {
-        'channel': 32,
+        'channel': 64,
     },
     'optimizer_cfg': {
         'lr': 5e-4,

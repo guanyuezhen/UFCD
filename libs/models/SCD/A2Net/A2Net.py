@@ -350,11 +350,10 @@ class A2Net(nn.Module):
         mask_p3 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
         mask_p4 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
         mask_p5 = F.interpolate(mask_p2, size=x1.size()[2:], mode='bilinear', align_corners=True)
-        mask_bc = torch.cat([mask_p2, mask_p3, mask_p4, mask_p5], dim=1)
         prediction = {
-            'change_mask': mask_bc,
-            'pre_mask': mask_x1,
-            'post_mask': mask_x2,
+            'change_mask': [mask_p2, mask_p3, mask_p4, mask_p5],
+            'pre_mask': [mask_x1],
+            'post_mask': [mask_x2],
         }
 
         return prediction
