@@ -1,6 +1,4 @@
-<div align="center">
-  <img src="./assest/ufcd_logo.png" alt="logo" />
-</div>
+
 
 # UFCD
 
