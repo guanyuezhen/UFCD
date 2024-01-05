@@ -18,7 +18,7 @@ def parser_args():
     parser.add_argument('--data_name', default="LEVIR", help='Data directory')
     parser.add_argument('--model_name', default="A2NetBCD", help='Name of method')
     parser.add_argument('--dataloader_name', default="bs_32", help='Batch size')
-    parser.add_argument('--is_train', type=int, default=1, help='Is train model')
+    parser.add_argument('--is_train', type=int, default=1, help='Is training')
     parser.add_argument('--save_dir', default='./weights/', help='Directory to save the results')
     parser.add_argument('--log_file', default='trainLog.txt', help='File that stores the training and validation logs')
     cmd_cfg = parser.parse_args()
