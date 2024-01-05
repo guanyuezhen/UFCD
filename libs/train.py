@@ -6,7 +6,6 @@ from libs.utils.evaluations.bda_evaluation import BDAEvaluation
 from libs.utils.evaluations.bcd_evaluation import BCDEvaluation
 
 
-
 def adjust_learning_rate(optimizer, iter, max_batches, optimizer_cfg):
     max_iter = max_batches * optimizer_cfg['max_epoch']
     base_lr = optimizer_cfg['lr']

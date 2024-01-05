@@ -25,31 +25,21 @@ class BDADataset(BaseDataset):
         self.file_list = open(self.data_root + '/' + self.dataset + '/' + 'image_list.txt').read().splitlines()
         if transform:
             self.train_transforms_all = A.Compose([
+                # A.Flip(p=0.5),
+                # A.Transpose(p=0.5),
+                # A.Rotate(45, p=0.3),
+                # A.ShiftScaleRotate(p=0.3),
+                # A.RandomSizedCrop(min_max_height=(self.image_size[0], self.image_size[1]),
+                #                   width=self.image_size[0], height=self.image_size[1], w2h_ratio=0.8, p=0.3),
                 A.Flip(p=0.5),
-                A.Transpose(p=0.5),
-                A.Rotate(45, p=0.3),
-                A.ShiftScaleRotate(p=0.3),
-                A.RandomSizedCrop(min_max_height=(self.image_size[0], self.image_size[1]),
-                                  width=self.image_size[0], height=self.image_size[1], w2h_ratio=0.8, p=0.3),
+                A.RandomRotate90(p=0.5),
             ], additional_targets={'image1': 'image', 'mask1': 'mask'})
-            self.train_transforms_pre_image = A.Compose(
-                [A.OneOf([
-                    A.GaussNoise(p=1),
-                    A.HueSaturationValue(p=1),
-                    A.RandomBrightnessContrast(p=1),
-                    A.RandomGamma(p=1),
-                    A.Emboss(p=1),
-                    A.MotionBlur(p=1),
-                ], p=0.8)])
-            self.train_transforms_post_image = A.Compose(
-                [A.OneOf([
-                    A.GaussNoise(p=1),
-                    A.HueSaturationValue(p=1),
-                    A.RandomBrightnessContrast(p=1),
-                    A.RandomGamma(p=1),
-                    A.Emboss(p=1),
-                    A.MotionBlur(p=1),
-                ], p=0.8)])
+            self.train_transforms_pre_image = A.Compose([
+                A.ColorJitter(p=0.5)
+            ])
+            self.train_transforms_post_image = A.Compose([
+                A.ColorJitter(p=0.5)
+            ])
         self.normalize_image = A.Compose([
             A.Normalize()
         ], additional_targets={'image1': 'image'})

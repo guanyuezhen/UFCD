@@ -61,7 +61,7 @@ class BCDEvaluation(BaseEvaluation):
             for i in range(change_mask.size(0)):
                 change_mask_i = change_mask[i:i + 1]
                 change_mask_i = torch.sigmoid(change_mask_i)
-                change_mask_i = (change_mask_i > 0.5).long()
+                change_mask_i = (change_mask_i > 0.5).long() * 255
                 binary_map = change_mask_i[0, 0].cpu().numpy()
                 binary_map = np.asarray(binary_map, dtype='uint8')
                 binary_map = Image.fromarray(binary_map)

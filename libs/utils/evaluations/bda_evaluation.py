@@ -76,7 +76,7 @@ class BDAEvaluation(BaseEvaluation):
             for i in range(pre_mask.size(0)):
                 pre_mask_i = pre_mask[i:i + 1]
                 pre_mask_i = torch.sigmoid(pre_mask_i)
-                pre_mask_i = (pre_mask_i > 0.5).long()
+                pre_mask_i = (pre_mask_i > 0.5).long() * 255
                 loc_map = pre_mask_i[0, 0].cpu().numpy()
                 loc_map = np.asarray(loc_map, dtype='uint8')
                 loc_map = Image.fromarray(loc_map)

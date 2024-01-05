@@ -5,14 +5,15 @@ from libs.models.scd.a2net.a2net import A2Net
 from libs.models.scd.bisrnet.bisrnet import BiSRNet
 from libs.models.scd.scannet.scannet import SCanNet
 from libs.models.bda.changeos.changeos import ChangeOS
+from libs.models.bda.changeosgrm.changeosgrm import ChangeOSGRM
 from libs.models.bcd.a2net.a2net import A2NetBCD
 from libs.models.bcd.tfigr.tfigr import TFIGR
 from libs.configs.method_config import A2Net_CFG, A2Net18_CFG, BISRNET_CFG, SSCDL_CFG, SCANNET_CFG, TED_CFG, \
-    CHANGEOS_CFG, A2NetBCD_CFG, TFIGR_CFG
+    CHANGEOS_CFG, A2NetBCD_CFG, TFIGR_CFG, CHANGEOSGRM_CFG
 from libs.datasets.scd_dataset import SCDDataset
 from libs.datasets.bda_dataset import BDADataset
 from libs.datasets.bcd_dataset import BCDDataset
-from libs.configs.data_config import SECOND_CFG, LANDSAT_CFG, XBD_CFG, LEVIR_CFG, BCDD_CFG, SYSU_CFG
+from libs.configs.data_config import SECOND_CFG, LANDSAT_CFG, XBD_CFG, LEVIR_CFG, LEVIRP_CFG, SYSU_CFG
 from libs.configs.dataloader_config import DATALOADER_CFG_BS_8, DATALOADER_CFG_BS_16, DATALOADER_CFG_BS_32
 from libs.utils.logger.bda_logger import BDALogger
 from libs.utils.logger.scd_logger import SCDLogger
@@ -30,6 +31,7 @@ def get_model_dataset_by_name(cmd_cfg):
         'SSCDL': SSCDL_CFG,
         'TED': TED_CFG,
         'ChangeOS': CHANGEOS_CFG,
+        'ChangeOS-GRM': CHANGEOSGRM_CFG,
     }
     METHOD_SET = {
         'TFIGR': TFIGR,
@@ -41,13 +43,14 @@ def get_model_dataset_by_name(cmd_cfg):
         'SSCDL': BiSRNet,
         'TED': SCanNet,
         'ChangeOS': ChangeOS,
+        'ChangeOS-GRM': ChangeOSGRM,
     }
     DATA_CFG_SET = {
         'SECOND': SECOND_CFG,
         'LandsatSCD': LANDSAT_CFG,
         'xBD': XBD_CFG,
         'LEVIR': LEVIR_CFG,
-        'BCDD': BCDD_CFG,
+        'LEVIR+': LEVIRP_CFG,
         'SYSU': SYSU_CFG,
     }
     DATA_SET = {
@@ -55,7 +58,7 @@ def get_model_dataset_by_name(cmd_cfg):
         'LandsatSCD': SCDDataset,
         'xBD': BDADataset,
         'LEVIR': BCDDataset,
-        'BCDD': BCDDataset,
+        'LEVIR+': BCDDataset,
         'SYSU': BCDDataset,
     }
     DATALOADER_CFG_SET = {

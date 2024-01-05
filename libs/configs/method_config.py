@@ -5,7 +5,8 @@ A2NetBCD_CFG = {
         'output_stride': 32
     },
     'head_cfg': {
-        'channel': 32,
+        'channel': 64,
+        'dilation_sizes': [7, 5, 3, 1],
     },
     'optimizer_cfg': {
         'lr': 5e-4,
@@ -46,7 +47,7 @@ A2Net_CFG = {
         'output_stride': 32
     },
     'head_cfg': {
-        'channel': 32,
+        'channel': 64,
     },
     'optimizer_cfg': {
         'lr': 5e-4,
@@ -65,7 +66,7 @@ A2Net18_CFG = {
         'output_stride': 32
     },
     'head_cfg': {
-        'channel': 64,
+        'channel': 128,
     },
     'optimizer_cfg': {
         'lr': 5e-4,
@@ -169,6 +170,26 @@ CHANGEOS_CFG = {
     },
     'head_cfg': {
         'decoder_channel': 64,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_epoch': 50,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
+CHANGEOSGRM_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'resnet18d',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'decoder_channel': 64,
+        'num_grbs': 2,
     },
     'optimizer_cfg': {
         'lr': 5e-4,

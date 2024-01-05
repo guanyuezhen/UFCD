@@ -74,6 +74,7 @@ class FeaturePyramidNetworks(nn.Module):
     @staticmethod
     def up_add(a, b):
         out = F.interpolate(a, b.size()[2:], mode='bilinear', align_corners=True) + b
+
         return out
 
     def forward(self, inputs: list):
@@ -81,8 +82,6 @@ class FeaturePyramidNetworks(nn.Module):
 
         for i in range(len(inputs) - 2, -1, -1):
             pyramid_features[i] = self.up_add(pyramid_features[i+1], pyramid_features[i])
-
-        for i in range(len(inputs) - 2, -1, -1):
             pyramid_features[i] = self.fpn_convs[i](pyramid_features[i])
 
         for i in range(len(inputs) - 1, 0, -1):

@@ -1,8 +1,9 @@
 
+DATA_PATH = './data'
 
 LEVIR_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/LEVIR',
+        'data_root': DATA_PATH + '/BCD/LEVIR',
         'train_dataset': 'train',
         'val_dataset': 'val',
         'test_dataset': 'test',
@@ -16,15 +17,15 @@ LEVIR_CFG = {
     }
 }
 
-BCDD_CFG = {
+LEVIRP_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/BCDD',
+        'data_root': DATA_PATH + '/BCD/LEVIR+',
         'train_dataset': 'train',
         'val_dataset': 'val',
         'test_dataset': 'test',
         'color_map': [[0, 0, 0], [255, 255, 255]],
         'classes': ['unchanged', 'change'],
-        'image_size': [256, 256],
+        'image_size': [1024, 1024],
     },
     'task_type': 'bcd',
     'task_cfg': {
@@ -34,7 +35,7 @@ BCDD_CFG = {
 
 SYSU_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_BCD_2/SYSU',
+        'data_root': DATA_PATH + '/BCD/SYSU',
         'train_dataset': 'train',
         'val_dataset': 'val',
         'test_dataset': 'test',
@@ -48,10 +49,9 @@ SYSU_CFG = {
     }
 }
 
-
 SECOND_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_SCD/SECOND_rgb',
+        'data_root': DATA_PATH + '/SCD/SECOND',
         'train_dataset': 'train',
         'val_dataset': 'val',
         'test_dataset': 'val',
@@ -69,7 +69,7 @@ SECOND_CFG = {
 
 LANDSAT_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_SCD/LandsatSCD_rgb',
+        'data_root': DATA_PATH + '/SCD/LandsatSCD',
         'train_dataset': 'train',
         'val_dataset': 'val',
         'test_dataset': 'test',
@@ -86,7 +86,7 @@ LANDSAT_CFG = {
 
 XBD_CFG = {
     'data_cfg': {
-        'data_root': '/mnt/disk_d/Change Detection/Datasets_SCD/xView2_rgb',
+        'data_root': DATA_PATH + '/BDA/xView2',
         'train_dataset': 'train',
         'val_dataset': 'test',
         'test_dataset': 'test',

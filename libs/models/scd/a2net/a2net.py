@@ -218,15 +218,46 @@ class Decoder(nn.Module):
         return reversed_masks
 
 
-class A2NetBCD(nn.Module):
+class SegmentationDecoder(nn.Module):
+    def __init__(self, channel, num_scd_class, num_features):
+        super(SegmentationDecoder, self).__init__()
+        self.channel = channel
+        self.num_scd_class = num_scd_class
+        self.num_features = num_features
+        self.sa_modules = nn.ModuleList()
+        self.fusion_convs = nn.ModuleList()
+        for i in range(0, self.num_features - 1):
+            fusion_conv = ConvBnAct(self.channel, self.channel, kernel_size=3, stride=1, padding=1)
+            self.fusion_convs.append(fusion_conv)
+
+        self.cls = nn.Conv2d(self.channel, self.num_scd_class, kernel_size=1)
+
+    @staticmethod
+    def up_add(a, b):
+        out = F.interpolate(a, b.size()[2:], mode='bilinear', align_corners=True) + b
+        return out
+
+    def forward(self, inputs: list):
+        reversed_inputs = inputs[::-1]
+        for i in range(len(reversed_inputs) - 1):
+            reversed_inputs[i + 1] = self.up_add(reversed_inputs[i], reversed_inputs[i + 1])
+            reversed_inputs[i + 1] = self.fusion_convs[i](reversed_inputs[i + 1])
+
+        mask = self.cls(reversed_inputs[-1])
+
+        return mask
+
+
+class A2Net(nn.Module):
     def __init__(self,
                  context_encoder,
                  in_channels=None,
                  channel=64,
                  dilation_sizes=None,
-                 num_bcd_class=1
+                 num_bcd_class=1,
+                 num_scd_class=7,
                  ):
-        super(A2NetBCD, self).__init__()
+        super(A2Net, self).__init__()
         if dilation_sizes is None:
             dilation_sizes = [7, 5, 3, 1]
         if in_channels is None:
@@ -238,9 +269,11 @@ class A2NetBCD(nn.Module):
         self.channel = channel
         self.dilation_sizes = dilation_sizes
         self.num_bcd_class = num_bcd_class
+        self.num_scd_class = num_scd_class
         self.swa = NeighborFeatureAggregation(self.in_channels, self.channel)
         self.tfm = TemporalFusionModule(self.channel, len(self.in_channels), self.dilation_sizes)
         self.decoder = Decoder(self.channel, self.num_bcd_class, len(self.in_channels))
+        self.segmentation_decoder = SegmentationDecoder(self.channel, self.num_scd_class, len(self.in_channels))
 
     def forward(self, x1, x2):
         # forward backbone resnet
@@ -253,10 +286,16 @@ class A2NetBCD(nn.Module):
         [c2, c3, c4, c5] = self.tfm([x1_2, x1_3, x1_4, x1_5], [x2_2, x2_3, x2_4, x2_5])
         # fpn for change detection
         masks = self.decoder([c2, c3, c4, c5])
+        seg_mask_t1 = self.segmentation_decoder([x1_2, x1_3, x1_4, x1_5])
+        seg_mask_t2 = self.segmentation_decoder([x2_2, x2_3, x2_4, x2_5])
+        seg_mask_t1 = F.interpolate(seg_mask_t1, size=x1.size()[2:], mode='bilinear', align_corners=True)
+        seg_mask_t2 = F.interpolate(seg_mask_t2, size=x1.size()[2:], mode='bilinear', align_corners=True)
         for i in range(len(masks)):
             masks[i] = F.interpolate(masks[i], size=x1.size()[2:], mode='bilinear', align_corners=True)
         prediction = {
             'change_mask': masks,
+            'pre_mask': [seg_mask_t1],
+            'post_mask': [seg_mask_t2],
         }
 
         return prediction
