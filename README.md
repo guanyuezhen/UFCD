@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assest/logo.png" alt="logo" />
+  <img width=500 src="./assest/logo.png" alt="logo" />
 </div>
 
 # UFCD
