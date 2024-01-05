@@ -2,8 +2,6 @@
   <img width=500 src="./assest/logo.png" alt="logo" />
 </div>
 
-# UFCD
-
 UFCD is a Pytorch-based toolbox for three different change detection tasks, including binary change detection (BCD), semantic change detection (SCD), and building damage assessment (BDA).
 
 ## 🍓 Quick Start
