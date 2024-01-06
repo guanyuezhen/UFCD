@@ -21,27 +21,26 @@ class BDAConfuseMatrixMeter(AverageMeter):
 
 
 def cm2F1(confusion_matrix):
-    hist = confusion_matrix
-    n_class = hist.shape[0]
+   hist = confusion_matrix
     tp = np.diag(hist)
     sum_a1 = hist.sum(axis=1)
     sum_a0 = hist.sum(axis=0)
-    # ---------------------------------------------------------------------- #
-    # 1. Accuracy & Class Accuracy
-    # ---------------------------------------------------------------------- #
-    acc = tp.sum() / (hist.sum() + np.finfo(np.float32).eps)
 
     # recall
     recall = tp / (sum_a1 + np.finfo(np.float32).eps)
-    # acc_cls = np.nanmean(recall)
 
     # precision
     precision = tp / (sum_a0 + np.finfo(np.float32).eps)
 
     # F1 score
     F1 = 2 * recall * precision / (recall + precision + np.finfo(np.float32).eps)
-    mean_F1 = np.nanmean(F1)
-    return acc
+    #
+    F_dam = 4 / (1 / (F1[1] + np.finfo(np.float32).eps)
+                 + 1 / (F1[2] + np.finfo(np.float32).eps)
+                 + 1 / (F1[3] + np.finfo(np.float32).eps)
+                 + 1 / (F1[4] + np.finfo(np.float32).eps)) * 100
+
+    return F_dam
 
 
 def cm2score(confusion_matrix):
@@ -68,7 +67,7 @@ def cm2score(confusion_matrix):
     F1_maj_dam = F1[3] * 100
     F1_des = F1[4] * 100
     #
-    score_dict = {'F_dam': F_dam, 'F1_no_dam': F1_no_dam, 'F1_min_dam': F1_min_dam,
+    score_dict = {'F1_dam': F_dam, 'F1_no_dam': F1_no_dam, 'F1_min_dam': F1_min_dam,
                   'F1_maj_dam': F1_maj_dam, 'F1_des': F1_des}
 
     return score_dict

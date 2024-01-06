@@ -92,7 +92,7 @@ XBD_CFG = {
         'test_dataset': 'test',
         'image_size': [1024, 1024],
         'color_map': [[0, 0, 0], [180, 169, 150], [244, 137, 36], [12, 185, 193], [248, 90, 64]],
-        'classes': ['background', 'no-damage', 'major-damage', 'destroyed'],
+        'classes': ['background', 'no-damage', 'minor-damage', 'major-damage', 'destroyed'],
     },
     'task_type': 'bda',
     'task_cfg': {
