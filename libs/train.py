@@ -1,5 +1,7 @@
 import time
 import torch
+import numpy as np
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 from libs.utils.evaluations.scd_evaluation import SCDEvaluation
 from libs.utils.evaluations.bda_evaluation import BDAEvaluation
@@ -29,6 +31,44 @@ def adjust_learning_rate(optimizer, iter, max_batches, optimizer_cfg):
     return target_lr
 
 
+def cut_mix(image, rand_index, bbx1, bbx2, bby1, bby2):
+    image[:, :, bbx1: bbx2, bby1: bby2] = image[rand_index, :, bbx1: bbx2, bby1: bby2]
+
+    return image
+
+
+def get_rand_box(size):
+    batch, channel, width, height = size
+    beta = 1.0
+    lam = np.random.beta(beta, beta)
+    rand_index = torch.randperm(batch)
+
+    cut_ratio = np.sqrt(1. - lam)
+    cut_width = (width * cut_ratio).astype(int)
+    cut_height = (height * cut_ratio).astype(int)
+
+    cx = np.random.randint(width)
+    cy = np.random.randint(height)
+
+    bbx1 = np.clip(cx - cut_width // 2, 0, width)
+    bbx2 = np.clip(cx + cut_width // 2, 0, width)
+    bby1 = np.clip(cy - cut_height // 2, 0, height)
+    bby2 = np.clip(cy + cut_height // 2, 0, height)
+
+    return rand_index, bbx1, bbx2, bby1, bby2
+
+
+def multi_scale_training(image, scale):
+    if scale != 1:
+        batch, channel, width, height = image.size()
+        resize_width = int(round(width * scale / 32.0) * 32)
+        resize_height = int(round(height * scale / 32.0) * 32)
+        resize_image = F.interpolate(image, size=(resize_width, resize_height), mode='bilinear', align_corners=True)
+        return resize_image
+    else:
+        return image
+
+
 def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optimizer, max_batches, cur_iter=0):
     Evaluation_SET = {
         'bda': BDAEvaluation,
@@ -47,6 +87,10 @@ def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optim
         images, labels, image_names = batched_inputs['image'], batched_inputs['label'], batched_inputs['image_name']
         images = {key: value.to('cuda') for key, value in images.items()}
         labels = {key: value.to('cuda') for key, value in labels.items()}
+
+        rand_index, bbx1, bbx2, bby1, bby2 = get_rand_box(images['pre_image'].size())
+        images = {key: cut_mix(value, rand_index, bbx1, bbx2, bby1, bby2) for key, value in images.items()}
+        labels = {key: cut_mix(value, rand_index, bbx1, bbx2, bby1, bby2) for key, value in labels.items()}
 
         lr = adjust_learning_rate(optimizer, iter + cur_iter, max_batches, optimizer_cfg)
 

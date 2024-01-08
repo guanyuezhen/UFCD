@@ -31,12 +31,6 @@ class SCDDataset(BaseDataset):
         self.post_gts = [self.data_root + '/' + self.dataset + '/label2/' + x for x in self.file_list]
         if transform:
             self.train_transforms_all = A.Compose([
-                # A.Flip(p=0.5),
-                # A.Transpose(p=0.5),
-                # A.Rotate(45, p=0.3),
-                # A.ShiftScaleRotate(p=0.3),
-                # A.RandomSizedCrop(min_max_height=(self.image_size[0], self.image_size[1]),
-                #                   width=self.image_size[0], height=self.image_size[1], w2h_ratio=0.8, p=0.3),
                 A.Flip(p=0.5),
                 A.RandomRotate90(p=0.5),
             ], additional_targets={'image1': 'image', 'mask1': 'mask'})
