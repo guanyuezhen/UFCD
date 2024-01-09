@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from PIL import Image
-from libs.losses.loss import BinaryDiceLoss
+from libs.losses.loss import BinaryCrossEntropyDiceLoss
 from libs.metrics.bcd_metric import BCDConfuseMatrixMeter
 from libs.utils.evaluations.base_evaluation import BaseEvaluation
 
@@ -20,7 +20,7 @@ class BCDEvaluation(BaseEvaluation):
         }
         if self.optimizer_cfg is not None:
             self.criterion = {
-                'binary_change_loss': BinaryDiceLoss().cuda(),
+                'binary_change_loss': BinaryCrossEntropyDiceLoss().cuda(),
             }
 
     def compute_loss(self, predictions, labels):

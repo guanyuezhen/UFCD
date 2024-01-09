@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from libs.losses.loss import ChangeSimilarity, BinaryDiceLoss, MutilCrossEntropyLoss
+from libs.losses.loss import ChangeSimilarity, BinaryCrossEntropyDiceLoss, MutilCrossEntropyLoss
 from libs.metrics.scd_metric import SCDConfuseMatrixMeter
 from libs.metrics.bcd_metric import BCDConfuseMatrixMeter
 from libs.utils.evaluations.base_evaluation import BaseEvaluation
@@ -23,7 +23,7 @@ class SCDEvaluation(BaseEvaluation):
             alpha = [1.] * self.task_cfg['num_scd_class']
             alpha = torch.as_tensor(alpha).contiguous().cuda()
             self.criterion = {
-                'binary_change_loss': BinaryDiceLoss().cuda(),
+                'binary_change_loss': BinaryCrossEntropyDiceLoss().cuda(),
                 'semantic_change_loss': MutilCrossEntropyLoss(alpha=alpha, ignore_index=0).cuda(),
                 'change_similarity_loss': ChangeSimilarity().cuda()
             }

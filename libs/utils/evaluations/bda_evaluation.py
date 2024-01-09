@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from PIL import Image
-from libs.losses.loss import BinaryDiceLoss, MutilCrossEntropyDiceLoss
+from libs.losses.loss import BinaryCrossEntropyDiceLoss, MutilCrossEntropyDiceLoss
 from libs.metrics.bcd_metric import BCDConfuseMatrixMeter
 from libs.metrics.bda_metric import BDAConfuseMatrixMeter
 from libs.utils.evaluations.base_evaluation import BaseEvaluation
@@ -24,7 +24,7 @@ class BDAEvaluation(BaseEvaluation):
             alpha = [1.] * self.task_cfg['num_bda_class']
             alpha = torch.as_tensor(alpha).contiguous().cuda()
             self.criterion = {
-                'building_location_loss': BinaryDiceLoss().cuda(),
+                'building_location_loss': BinaryCrossEntropyDiceLoss().cuda(),
                 'building_damage_assessment': MutilCrossEntropyDiceLoss(alpha=alpha).cuda()
             }
 
