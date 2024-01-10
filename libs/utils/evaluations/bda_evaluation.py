@@ -34,7 +34,7 @@ class BDAEvaluation(BaseEvaluation):
             loss_bda += self.criterion['building_damage_assessment'](predictions['cls_mask'][i], labels['post_label'])
         loss_bl = 0
         for i in range(len(predictions['loc_mask'])):
-            loss_bl += self.criterion['building_location_loss'](predictions['loc_mask'][i], labels['post_label'])
+            loss_bl += self.criterion['building_location_loss'](predictions['loc_mask'][i], labels['pre_label'])
         loss = loss_bda + loss_bl
 
         return loss
