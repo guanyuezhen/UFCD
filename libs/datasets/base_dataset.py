@@ -47,7 +47,7 @@ class BaseDataset(torch.utils.data.Dataset):
         pass
 
     def index_to_color(self, index_map):
-        color_map = np.asarray(self.color_map_to_label, dtype='uint8')
+        color_map = np.asarray(self.color_map, dtype='uint8')
         x = np.asarray(index_map, dtype='int32')
 
         return color_map[x, :]
