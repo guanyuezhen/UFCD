@@ -21,7 +21,7 @@ def adjust_learning_rate(optimizer, iter, max_batches, optimizer_cfg):
     coeff = (1 - cur_iter / max_iter) ** power
     target_lr = coeff * (base_lr - min_lr) + min_lr
 
-    if warm_up_iter >= iter:
+    if warm_up_iter >= iter and warm_up_iter > 0:
         k = (1 - cur_iter / warm_up_iter) * (1 - warm_up_ratio)
         target_lr = (1 - k) * target_lr
 
@@ -69,7 +69,7 @@ def multi_scale_training(image, scale):
         return image
 
 
-def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optimizer, max_batches, cur_iter=0):
+def train(cmd_cfg, task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optimizer, max_batches, cur_iter=0):
     Evaluation_SET = {
         'bda': BDAEvaluation,
         'scd': SCDEvaluation,
@@ -81,6 +81,8 @@ def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optim
     model.train()
     epoch_loss = []
 
+    is_multi_scale_training = cmd_cfg.is_multi_scale_training
+
     for iter, batched_inputs in enumerate(train_loader):
         start_time = time.time()
 
@@ -91,6 +93,12 @@ def train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optim
         rand_index, bbx1, bbx2, bby1, bby2 = get_rand_box(images['pre_image'].size())
         images = {key: cut_mix(value, rand_index, bbx1, bbx2, bby1, bby2) for key, value in images.items()}
         labels = {key: cut_mix(value, rand_index, bbx1, bbx2, bby1, bby2) for key, value in labels.items()}
+
+        if is_multi_scale_training > 0:
+            scales = [0.75, 1, 1.25]
+            selected_scale = scales[np.random.randint(0, len(scales))]
+            images = {key: multi_scale_training(value, selected_scale) for key, value in images.items()}
+            labels = {key: multi_scale_training(value, selected_scale) for key, value in labels.items()}
 
         lr = adjust_learning_rate(optimizer, iter + cur_iter, max_batches, optimizer_cfg)
 

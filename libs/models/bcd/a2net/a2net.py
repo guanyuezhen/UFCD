@@ -157,45 +157,47 @@ class TemporalFusionModule(nn.Module):
 
 
 class SupervisedAttentionModule(nn.Module):
-    def __init__(self, channel, num_bcd_class):
+    def __init__(self, channel, num_class):
         super(SupervisedAttentionModule, self).__init__()
         self.channel = channel
-        self.num_bcd_class = num_bcd_class
-        self.cls = nn.Conv2d(self.channel, self.num_bcd_class, kernel_size=1)
-        self.conv_context = nn.Sequential(
-            nn.Conv2d(self.num_bcd_class + 1, self.channel, kernel_size=1),
+        self.num_class = num_class
+        self.cls = nn.Conv2d(self.channel, self.num_class, kernel_size=1)
+        self.attention_conv = nn.Sequential(
+            nn.Conv2d(self.num_class, self.channel, kernel_size=1),
             nn.BatchNorm2d(self.channel),
             nn.Sigmoid()
         )
         self.conv2 = ConvBnAct(self.channel, self.channel, kernel_size=3, stride=1, padding=1)
 
-    def forward(self, x):
+    def forward(self, x, gated_mask=None):
         mask = self.cls(x)
-        mask_f = torch.sigmoid(mask)
-        mask_b = 1 - mask_f
-        context = torch.cat([mask_f, mask_b], dim=1)
-        context = self.conv_context(context)
-        x = x * context
+        mask_softmax = torch.softmax(mask, dim=1)
+        if gated_mask is not None:
+            gated_mask = torch.argmax(gated_mask, dim=1, keepdim=True)
+            mask_softmax = mask_softmax * gated_mask
+
+        gated_attention = self.attention_conv(mask_softmax)
+        x = x * gated_attention
         x_out = self.conv2(x)
 
         return x_out, mask
 
 
 class Decoder(nn.Module):
-    def __init__(self, channel, num_bcd_class, num_features):
+    def __init__(self, channel, num_class, num_features):
         super(Decoder, self).__init__()
         self.channel = channel
-        self.num_bcd_class = num_bcd_class
+        self.num_class = num_class
         self.num_features = num_features
         self.sa_modules = nn.ModuleList()
         self.fusion_convs = nn.ModuleList()
         for i in range(0, self.num_features - 1):
             fusion_conv = ConvBnAct(self.channel, self.channel, kernel_size=3, stride=1, padding=1)
-            sa_module = SupervisedAttentionModule(self.channel, self.num_bcd_class)
+            sa_module = SupervisedAttentionModule(self.channel, self.num_class)
             self.fusion_convs.append(fusion_conv)
             self.sa_modules.append(sa_module)
 
-        self.cls = nn.Conv2d(self.channel, self.num_bcd_class, kernel_size=1)
+        self.cls = nn.Conv2d(self.channel, self.num_class, kernel_size=1)
 
     @staticmethod
     def up_add(a, b):
@@ -224,7 +226,7 @@ class A2NetBCD(nn.Module):
                  in_channels=None,
                  channel=64,
                  dilation_sizes=None,
-                 num_bcd_class=1
+                 num_bcd_class=2
                  ):
         super(A2NetBCD, self).__init__()
         if dilation_sizes is None:

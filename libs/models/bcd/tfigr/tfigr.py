@@ -147,7 +147,7 @@ class TFIGR(nn.Module):
                  in_channels=None,
                  channel=64,
                  num_grbs=2,
-                 num_bcd_class=1
+                 num_bcd_class=2,
                  ):
         super(TFIGR, self).__init__()
         if in_channels is None:

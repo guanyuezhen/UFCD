@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from libs.losses.loss import ChangeSimilarity, BinaryCrossEntropyDiceLoss, MutilCrossEntropyLoss
+from libs.losses.loss import MutilCrossEntropyDiceLoss, MutilCrossEntropyLoss, ChangeSimilarity
 from libs.metrics.scd_metric import SCDConfuseMatrixMeter
 from libs.metrics.bcd_metric import BCDConfuseMatrixMeter
 from libs.utils.evaluations.base_evaluation import BaseEvaluation
@@ -17,15 +17,17 @@ class SCDEvaluation(BaseEvaluation):
 
         self.evaluation = {
             'scd_evaluation': SCDConfuseMatrixMeter(self.task_cfg['num_scd_class']),
-            'bcd_evaluation': BCDConfuseMatrixMeter(self.task_cfg['num_bcd_class'] + 1)
+            'bcd_evaluation': BCDConfuseMatrixMeter(self.task_cfg['num_bcd_class'])
         }
         if self.optimizer_cfg is not None:
-            alpha = [1.] * self.task_cfg['num_scd_class']
-            alpha = torch.as_tensor(alpha).contiguous().cuda()
+            alpha_scd = [1.] * self.task_cfg['num_scd_class']
+            alpha_scd = torch.as_tensor(alpha_scd).contiguous().cuda()
+            alpha_bcd = [1.] * self.task_cfg['num_bcd_class']
+            alpha_bcd = torch.as_tensor(alpha_bcd).contiguous().cuda()
             self.criterion = {
-                'binary_change_loss': BinaryCrossEntropyDiceLoss().cuda(),
-                'semantic_change_loss': MutilCrossEntropyLoss(alpha=alpha, ignore_index=0).cuda(),
-                'change_similarity_loss': ChangeSimilarity().cuda()
+                'binary_change_loss': MutilCrossEntropyDiceLoss(alpha=alpha_bcd).cuda(),
+                'semantic_change_loss': MutilCrossEntropyLoss(alpha=alpha_scd, ignore_index=0).cuda(),
+                'change_similarity_loss': ChangeSimilarity().cuda(),
             }
 
     def compute_loss(self, predictions, labels):
@@ -33,14 +35,18 @@ class SCDEvaluation(BaseEvaluation):
         loss_pre_scd = 0
         for i in range(len(predictions['pre_mask'])):
             loss_pre_scd += self.criterion['semantic_change_loss'](predictions['pre_mask'][i], labels['pre_label'])
+
         loss_post_scd = 0
         for i in range(len(predictions['pre_mask'])):
             loss_post_scd += self.criterion['semantic_change_loss'](predictions['post_mask'][i], labels['post_label'])
+
         loss_bcd = 0
         for i in range(len(predictions['change_mask'])):
             loss_bcd += self.criterion['binary_change_loss'](predictions['change_mask'][i], binary_target)
+
         loss_sc = self.criterion['change_similarity_loss'](predictions['pre_mask'][0], predictions['post_mask'][0],
                                                            binary_target)
+
         loss = loss_pre_scd + loss_post_scd + loss_bcd + loss_sc
 
         return loss
@@ -50,8 +56,7 @@ class SCDEvaluation(BaseEvaluation):
             binary_target = (labels['pre_label'] > 0).float()
 
             change_mask = predictions['change_mask'][0]
-            change_mask = torch.sigmoid(change_mask)
-            change_mask = (change_mask > 0.5).long()
+            change_mask = torch.argmax(change_mask, dim=1, keepdim=True)
             pre_mask = torch.argmax(predictions['pre_mask'][0], dim=1)
             post_mask = torch.argmax(predictions['post_mask'][0], dim=1)
             mask = torch.cat(
@@ -93,8 +98,7 @@ class SCDEvaluation(BaseEvaluation):
                 pre_mask_i = pre_mask[i:i + 1]
                 post_mask_i = post_mask[i:i + 1]
                 change_mask_i = change_mask[i:i + 1]
-                change_mask_i = torch.sigmoid(change_mask_i)
-                change_mask_i = (change_mask_i > 0.5).long()
+                change_mask_i = change_mask = torch.argmax(change_mask_i, dim=1, keepdim=True)
                 pre = (torch.argmax(pre_mask_i, dim=1) * change_mask_i.squeeze(1))[0].cpu().numpy()
                 scd_map = test_loader.dataset.index_to_color(pre)
                 scd_map = Image.fromarray(scd_map)

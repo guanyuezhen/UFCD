@@ -21,7 +21,7 @@ class BDAConfuseMatrixMeter(AverageMeter):
 
 
 def cm2F1(confusion_matrix):
-   hist = confusion_matrix
+    hist = confusion_matrix
     tp = np.diag(hist)
     sum_a1 = hist.sum(axis=1)
     sum_a0 = hist.sum(axis=0)

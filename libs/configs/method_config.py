@@ -1,4 +1,3 @@
-
 A2NetBCD_CFG = {
     'backbone_cfg': {
         'backbone_name': 'mobilenetv2',
@@ -10,7 +9,8 @@ A2NetBCD_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -18,7 +18,6 @@ A2NetBCD_CFG = {
         'lr_factor': 1.0,
     },
 }
-
 
 TFIGR_CFG = {
     'backbone_cfg': {
@@ -31,7 +30,8 @@ TFIGR_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -40,6 +40,25 @@ TFIGR_CFG = {
     },
 }
 
+ARCDNetBCD_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'resnet18d',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 64
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
 
 A2Net_CFG = {
     'backbone_cfg': {
@@ -51,7 +70,8 @@ A2Net_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -60,9 +80,9 @@ A2Net_CFG = {
     },
 }
 
-A2Net18_CFG = {
+A2Net34_CFG = {
     'backbone_cfg': {
-        'backbone_name': 'resnet18d',
+        'backbone_name': 'resnet34d',
         'output_stride': 32
     },
     'head_cfg': {
@@ -70,7 +90,8 @@ A2Net18_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -81,7 +102,7 @@ A2Net18_CFG = {
 
 BISRNET_CFG = {
     'backbone_cfg': {
-        'backbone_name': 'resnet18d',
+        'backbone_name': 'resnet34d',
         'output_stride': 8
     },
     'head_cfg': {
@@ -90,7 +111,8 @@ BISRNET_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -101,7 +123,7 @@ BISRNET_CFG = {
 
 SSCDL_CFG = {
     'backbone_cfg': {
-        'backbone_name': 'resnet18d',
+        'backbone_name': 'resnet34d',
         'output_stride': 8
     },
     'head_cfg': {
@@ -110,7 +132,8 @@ SSCDL_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -121,7 +144,7 @@ SSCDL_CFG = {
 
 SCANNET_CFG = {
     'backbone_cfg': {
-        'backbone_name': 'resnet18d',
+        'backbone_name': 'resnet34d',
         'output_stride': 8
     },
     'head_cfg': {
@@ -132,7 +155,8 @@ SCANNET_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -143,7 +167,7 @@ SCANNET_CFG = {
 
 TED_CFG = {
     'backbone_cfg': {
-        'backbone_name': 'resnet18d',
+        'backbone_name': 'resnet34d',
         'output_stride': 8
     },
     'head_cfg': {
@@ -154,7 +178,8 @@ TED_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -173,7 +198,8 @@ CHANGEOS_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,
@@ -193,7 +219,8 @@ CHANGEOSGRM_CFG = {
     },
     'optimizer_cfg': {
         'lr': 5e-4,
-        'max_epoch': 50,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
         'power': 0.9,
         'min_lr': 0.0,
         'warm_up_iter': 1500,

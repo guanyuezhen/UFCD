@@ -10,7 +10,8 @@ class ChangeOS(nn.Module):
                  in_channels: list = None,
                  decoder_channel: int = 64,
                  num_bl_class: int = 1,
-                 num_bda_class: int = 5):
+                 num_bda_class: int = 5
+                 ):
         super(ChangeOS, self).__init__()
         if in_channels is None:
             in_channels = [64, 128, 256, 512]

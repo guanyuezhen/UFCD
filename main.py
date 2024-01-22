@@ -15,18 +15,31 @@ from libs.utils.set_seed import set_seed
 
 def parser_args():
     parser = argparse.ArgumentParser(description='An open source change detection toolbox based on PyTorch')
-    parser.add_argument('--data_name', default="LEVIR", help='Data directory')
-    parser.add_argument('--model_name', default="A2NetBCD", help='Name of method')
-    parser.add_argument('--dataloader_name', default="bs_32", help='Batch size')
-    parser.add_argument('--is_train', type=int, default=1, help='Is training')
-    parser.add_argument('--save_dir', default='./weights/', help='Directory to save the results')
-    parser.add_argument('--log_file', default='trainLog.txt', help='File that stores the training and validation logs')
+    parser.add_argument('--data_name', default="SECOND",
+                        choices=['LEVIR', 'LEVIR+', 'SYSU', 'SECOND', 'LandsatSCD', 'xview2'],
+                        help='Data directory')
+    parser.add_argument('--model_name', default="A2Net",
+                        choices=['TFIGR', 'A2Net', 'A2Net34', 'SSCDL', 'TED', 'BiSRNet', 'SCanNet', 'ChangeOS',
+                                 'ChangeOS-GRM'],
+                        help='Name of method')
+    parser.add_argument('--dataloader_name', default="bs_8",
+                        choices=['bs_8', 'bs_16', 'bs_32'],
+                        help='Batch size')
+    parser.add_argument('--is_train', type=int, default=1,
+                        choices=[0, 1],
+                        help='Is train model')
+    parser.add_argument('--save_dir', default='./weights/',
+                        help='Directory to save the results')
+    parser.add_argument('--log_file', default='trainLog.txt',
+                        help='File that stores the training and validation logs')
     cmd_cfg = parser.parse_args()
     cmd_cfg.save_dir = cmd_cfg.save_dir + cmd_cfg.model_name + '/' + cmd_cfg.data_name + '/'
     cmd_cfg.pre_dir = cmd_cfg.save_dir + '/pre/'
     cmd_cfg.post_dir = cmd_cfg.save_dir + '/post/'
     cmd_cfg.log_file_loc = cmd_cfg.save_dir + cmd_cfg.log_file
     cmd_cfg.model_file_name = cmd_cfg.save_dir + 'best_model.pth'
+    cmd_cfg.is_multi_scale_training = 1
+    cmd_cfg.is_multi_scale_testing = 1
     print('Called with cmd_cfg:')
     print(cmd_cfg)
 
@@ -59,20 +72,24 @@ def main():
         print('For each epoch, we have {} batches'.format(max_batches))
 
         max_epochs = optimizer_cfg['max_epoch']
+        eva_per_iters = optimizer_cfg['eva_per_iter']
         start_epoch = 0
         cur_iter = 0
+        cur_val_count = 0
 
         for epoch in range(start_epoch, max_epochs):
-            loss_tr, score_tr, lr = train(task_type, task_cfg, optimizer_cfg, train_loader, model, scaler, optimizer,
-                                          max_batches, cur_iter)
+            loss_tr, score_tr, lr = train(cmd_cfg, task_type, task_cfg, optimizer_cfg, train_loader,
+                                          model, scaler, optimizer, max_batches, cur_iter)
             cur_iter += len(train_loader)
             torch.cuda.empty_cache()
             logger.save_checkpoint(epoch, model, optimizer, loss_tr, score_tr, lr)
 
-            score_val = test(cmd_cfg, task_type, task_cfg, val_loader, model)
-            logger.write_val(epoch, loss_tr, score_tr, score_val)
-            logger.save_model(epoch, model, score_val)
-            torch.cuda.empty_cache()
+            if cur_iter >= eva_per_iters * (cur_val_count + 1):
+                score_val = test(cmd_cfg, task_type, task_cfg, val_loader, model)
+                logger.write_val(epoch, loss_tr, score_tr, score_val)
+                logger.save_model(epoch, model, score_val)
+                torch.cuda.empty_cache()
+                cur_val_count += 1
 
         state_dict = torch.load(cmd_cfg.model_file_name)
         model.load_state_dict(state_dict)

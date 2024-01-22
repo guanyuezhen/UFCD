@@ -6,14 +6,15 @@ import cv2
 class BaseDataset(torch.utils.data.Dataset):
     def __init__(self,
                  data_cfg: dict,
-                 transform=None
+                 train_cfg: dict,
                  ):
         super(BaseDataset, self).__init__()
         self.data_root = data_cfg['data_root']
         self.image_size = data_cfg['image_size']
         self.color_map = data_cfg['color_map']
         self.classes = data_cfg['classes']
-        self.transform = transform
+        self.sub_set = train_cfg['sub_set']
+        self.transform = train_cfg['transform']
 
         self.color_map_to_label = np.zeros(256 ** 3)
         for i, cm in enumerate(self.color_map):
