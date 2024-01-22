@@ -19,10 +19,10 @@ class BDADataset(BaseDataset):
         post_image_id = image_id + 'post_disaster.png'
         pre_label_id = image_id + 'pre_disaster.png'
         post_label_id = image_id + 'post_disaster_rgb.png'
-        pre_image_path = self.data_root + '/' + self.dataset + '/images/' + pre_image_id
-        post_image_path = self.data_root + '/' + self.dataset + '/images/' + post_image_id
-        pre_label_path = self.data_root + '/' + self.dataset + '/masks/' + pre_label_id
-        post_label_path = self.data_root + '/' + self.dataset + '/masks/' + post_label_id
+        pre_image_path = self.data_root + '/' + self.sub_set + '/images/' + pre_image_id
+        post_image_path = self.data_root + '/' + self.sub_set + '/images/' + post_image_id
+        pre_label_path = self.data_root + '/' + self.sub_set + '/masks/' + pre_label_id
+        post_label_path = self.data_root + '/' + self.sub_set + '/masks/' + post_label_id
         #
         pre_image = self.load(pre_image_path, file_type='rbg_image')
         post_image = self.load(post_image_path, file_type='rbg_image')
