@@ -2,10 +2,10 @@
 ##  Prepare the datasets
 
 ✈️ `1`: Prepare the binary change detection datasets:
-- Download datasets [LEVIR](https://justchenhao.github.io/LEVIR/) and [SYSU](https://github.com/liumency/SYSU-CD)
-- Crop LEVIR and BCDD datasets into 256x256 patches. 
+- Download datasets [LEVIR](https://justchenhao.github.io/LEVIR/), [LEVIR+](https://github.com/S2Looking/Dataset), [S2Looking](https://github.com/S2Looking/Dataset), and [SYSU](https://github.com/liumency/SYSU-CD)
+- Crop LEVIR dataset into 256x256 patches. 
 - Generate list file as `ls -R ./label/* > test.txt`
-- Prepare datasets into the following structure and set their path in `./lib/configs/data_congfig.py`
+- Prepare datasets into the following structure and set their path in `./lib/configs/base/datasets/levir_congfig.py`, `./lib/configs/base/datasets/levir_plus_congfig.py`, `./lib/configs/base/datasets/s2looking_congfig.py`, and `./lib/configs/base/datasets/sysu_congfig.py`
     ```
     ├─train
         ├─A        ...jpg/png
@@ -29,7 +29,7 @@
 - Download datasets [SECOND](https://ieeexplore.ieee.org/abstract/document/9555824), and [Landsat-SCD](https://figshare.com/articles/figure/Landsat-SCD_dataset_zip/19946135/1)
 - The pre-processed datasets can be obtained from [SECOND](http://www.captain-whu.com/PROJECT/SCD/), and the train and test list can be  downloaded from [list](https://github.com/ggsDing/Bi-SRNet/tree/main/datasets).
 - The pre-processed Landsat-SCD dataset can be obtained from [Landsat-SCD](https://drive.google.com/file/d/11CkLhakNtfaBH78SGTHxcXKNsBM524H5/view).
-- Prepare datasets into the following structure and set their path in `./lib/configs/data_congfig.py`
+- Prepare datasets into the following structure and set their path in `./lib/configs/base/datasets/second_congfig.py` and `./lib/configs/base/datasets/landsatcd_congfig.py`
 ```
 ├─train
     ├─im1        ...jpg/png
@@ -37,6 +37,12 @@
     ├─label1    ...jpg/png
     ├─label2    ...jpg/png
     └─list     ...txt
+├─val
+    ├─im1        
+    ├─im2        
+    ├─label1    
+    ├─label2   
+    └─list  
 ├─test
     ├─im1        
     ├─im2        
@@ -48,7 +54,7 @@
 - Download dataset [xView2](https://openaccess.thecvf.com/content_CVPRW_2019/papers/cv4gc/Gupta_Creating_xBD_A_Dataset_for_Assessing_Building_Damage_from_Satellite_CVPRW_2019_paper.pdf).
 - Create the rbg mask from xView2 by using './data/xBD/preoricess_data.py'.
 - Create the image list from xView2 by using './data/xBD/capture_image_list.py'.
-- Prepare dataset into the following structure and set its path in `./lib/configs/data_congfig.py`
+- Prepare the dataset into the following structure and set its path in `./lib/configs/base/datasets/xview2_congfig.py`
 ```
 ├─train
     ├─images        ...jpg/png
