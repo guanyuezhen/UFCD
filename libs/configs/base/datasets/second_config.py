@@ -8,7 +8,7 @@ DATASET_CFG_SECOND = {
         'num_scd_class': 7,
     },
     'data_cfg': {
-        'data_root': '/root/data1/data/SCD/SECOND',
+        'data_root': '/mnt/disk_d/Change Detection/UFCD-data/data/SCD/SECOND',
         'image_size': [512, 512],
         'color_map': [[255, 255, 255], [0, 0, 255], [128, 128, 128], [0, 128, 0], [0, 255, 0], [128, 0, 0],
                       [255, 0, 0]],

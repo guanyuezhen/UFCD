@@ -31,9 +31,7 @@ def get_backbone(backbone_name='resnet18d', output_stride=32):
         return context_encoder, in_channels
 
     elif backbone_name == 'mobilevitv2':
-        encoder_config = efficient_cfg(url='', file='./libs/backbone/mobilenetv2_100_ra-b33bc2c4.pth')
-        context_encoder = timm.create_model('mobilenetv2_100', features_only=True, pretrained=True,
-                                            pretrained_cfg=encoder_config)
-        in_channels = [16, 24, 32, 96, 320]
+        context_encoder = timm.create_model('mobilevitv2_100', features_only=True, pretrained=True)
+        in_channels = [64, 128, 256, 384, 512]
 
         return context_encoder, in_channels

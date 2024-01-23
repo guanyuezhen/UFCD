@@ -16,11 +16,14 @@ from libs.utils.set_seed import set_seed
 def parser_args():
     parser = argparse.ArgumentParser(description='An open source change detection toolbox based on PyTorch')
     parser.add_argument('--data_name', default="SECOND",
-                        choices=['LEVIR', 'LEVIR+', 'SYSU', 'SECOND', 'LandsatSCD', 'xview2'],
+                        choices=['LEVIR', 'LEVIR+', 'SYSU', 'S2Looking',
+                                 'SECOND', 'LandsatSCD',
+                                 'xview2'],
                         help='Data directory')
-    parser.add_argument('--model_name', default="A2Net",
-                        choices=['TFIGR', 'A2Net', 'A2Net34', 'SSCDL', 'TED', 'BiSRNet', 'SCanNet', 'ChangeOS',
-                                 'ChangeOS-GRM'],
+    parser.add_argument('--model_name', default="A2NetMvit",
+                        choices=['TFIGR', 'A2NetBCD', 'ARCDNetBCD', 'ChangeStar',
+                                 'A2Net', 'A2NetMvit', 'A2Net34', 'SSCDL', 'TED', 'BiSRNet', 'SCanNet',
+                                 'ChangeOS', 'ChangeOS-GRM', 'ARCDNet'],
                         help='Name of method')
     parser.add_argument('--dataloader_name', default="bs_8",
                         choices=['bs_8', 'bs_16', 'bs_32'],
@@ -38,8 +41,8 @@ def parser_args():
     cmd_cfg.post_dir = cmd_cfg.save_dir + '/post/'
     cmd_cfg.log_file_loc = cmd_cfg.save_dir + cmd_cfg.log_file
     cmd_cfg.model_file_name = cmd_cfg.save_dir + 'best_model.pth'
-    cmd_cfg.is_multi_scale_training = 1
-    cmd_cfg.is_multi_scale_testing = 1
+    cmd_cfg.is_multi_scale_training = 0
+    cmd_cfg.is_multi_scale_testing = 0
     print('Called with cmd_cfg:')
     print(cmd_cfg)
 

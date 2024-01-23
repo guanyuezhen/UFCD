@@ -8,7 +8,7 @@ DATASET_CFG_XVIEW2 = {
         'num_bda_class': 5,
     },
     'data_cfg': {
-        'data_root': '/root/data1/data/BDA/xView2',
+        'data_root': '/mnt/disk_d/Change Detection/UFCD-data/data/BDA/xView2',
         'image_size': [1024, 1024],
         'color_map': [[0, 0, 0], [180, 169, 150], [244, 137, 36], [12, 185, 193], [248, 90, 64]],
         'classes': ['background', 'no-damage', 'minor-damage', 'major-damage', 'destroyed'],

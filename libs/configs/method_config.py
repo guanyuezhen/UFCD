@@ -60,9 +60,50 @@ ARCDNetBCD_CFG = {
     },
 }
 
+ChangeStarUperNet_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'resnet18d',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 256,
+        'inner_channel': 16,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
 A2Net_CFG = {
     'backbone_cfg': {
         'backbone_name': 'mobilenetv2',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 64,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
+A2NetMVIT_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'mobilevitv2',
         'output_stride': 32
     },
     'head_cfg': {
@@ -216,6 +257,26 @@ CHANGEOSGRM_CFG = {
     'head_cfg': {
         'decoder_channel': 64,
         'num_grbs': 2,
+    },
+    'optimizer_cfg': {
+        'lr': 5e-4,
+        'max_iter': 20000,
+        'eva_per_iter': 2000,
+        'power': 0.9,
+        'min_lr': 0.0,
+        'warm_up_iter': 1500,
+        'warm_up_ratio': 1e-6,
+        'lr_factor': 1.0,
+    },
+}
+
+ARCDNet_CFG = {
+    'backbone_cfg': {
+        'backbone_name': 'resnet18d',
+        'output_stride': 32
+    },
+    'head_cfg': {
+        'channel': 64,
     },
     'optimizer_cfg': {
         'lr': 5e-4,

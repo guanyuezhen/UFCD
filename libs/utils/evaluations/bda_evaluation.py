@@ -49,23 +49,32 @@ class BDAEvaluation(BaseEvaluation):
             alpha_bl = torch.as_tensor(alpha_bl).contiguous().cuda()
             self.criterion = {
                 'building_location_loss': MutilCrossEntropyDiceLoss(alpha=alpha_bl).cuda(),
-                'building_damage_assessment': MutilCrossEntropyDiceLoss(alpha=alpha_bda).cuda(),
-                'uncertainty_loss': BinaryCrossEntropyLoss().cuda(),
+                'building_damage_assessment_loss': MutilCrossEntropyDiceLoss(alpha=alpha_bda).cuda(),
+                'building_location_uncertainty_loss': BinaryCrossEntropyLoss().cuda(),
+                'building_damage_assessment_uncertainty_loss': BinaryCrossEntropyLoss().cuda(),
             }
 
     def compute_loss(self, predictions, labels):
         loss_bda = 0
         for i in range(len(predictions['cls_mask'])):
-            loss_bda += self.criterion['building_damage_assessment'](predictions['cls_mask'][i], labels['post_label'])
+            loss_bda += self.criterion['building_damage_assessment_loss'](
+                predictions['cls_mask'][i], labels['post_label'])
         loss_bl = 0
         for i in range(len(predictions['loc_mask'])):
             loss_bl += self.criterion['building_location_loss'](predictions['loc_mask'][i], labels['pre_label'])
         loss = loss_bda + loss_bl
 
-        if labels.get('uncertainty_mask') is not None:
-            uncertainty_label = torch.abs(predictions['change_mask'][0].detach() - labels['post_label'])
+        if labels.get('uncertainty_mask_loc') is not None:
+            uncertainty_label = torch.abs(predictions['loc_mask'][0].detach() - labels['pre_label'])
             uncertainty_label = uncertainty_label / (F.adaptive_max_pool2d(uncertainty_label, (1, 1)) + 1e-3)
-            loss += self.criterion['uncertainty_loss'](predictions['uncertainty_mask'], uncertainty_label)
+            loss += self.criterion['building_location_uncertainty_loss'](
+                predictions['uncertainty_mask_loc'], uncertainty_label)
+
+        if labels.get('uncertainty_mask_cls') is not None:
+            uncertainty_label = torch.abs(predictions['cls_mask'][0].detach() - labels['post_label'])
+            uncertainty_label = uncertainty_label / (F.adaptive_max_pool2d(uncertainty_label, (1, 1)) + 1e-3)
+            loss += self.criterion['building_damage_assessment_uncertainty_loss'](
+                predictions['uncertainty_mask_cls'], uncertainty_label)
 
         return loss
 

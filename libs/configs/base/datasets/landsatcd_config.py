@@ -8,7 +8,7 @@ DATASET_CFG_LANDSAT = {
         'num_scd_class': 5,
     },
     'data_cfg': {
-        'data_root': '/root/data1/data/SCD/LandsatSCD',
+        'data_root': '/mnt/disk_d/Change Detection/UFCD-data/data/SCD/LandsatSCD',
         'image_size': [416, 416],
         'color_map': [[255, 255, 255], [0, 155, 0], [255, 165, 0], [230, 30, 100], [0, 170, 240]],
         'classes': ['No change', 'Farmland', 'Desert', 'Building', 'Water'],

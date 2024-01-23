@@ -7,7 +7,7 @@ DATASET_CFG_SYSU = {
         'num_bcd_class': 2,
     },
     'data_cfg': {
-        'data_root': '/root/data1/data/BCD/SYSU',
+        'data_root': '/mnt/disk_d/Change Detection/UFCD-data/data/BCD/SYSU',
         'color_map': [[0, 0, 0], [255, 255, 255]],
         'classes': ['unchanged', 'change'],
         'image_size': [256, 256],

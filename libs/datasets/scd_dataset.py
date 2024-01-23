@@ -10,7 +10,7 @@ class SCDDataset(BaseDataset):
         super(SCDDataset, self).__init__(data_cfg=data_cfg, train_cfg=train_cfg)
 
         self.file_list = open(
-            self.data_root + '/' + self.dataset + '/list/' + self.sub_set + '.txt').read().splitlines()
+            self.data_root + '/' + self.sub_set + '/list/' + self.sub_set + '.txt').read().splitlines()
         self.pre_images = [self.data_root + '/' + self.sub_set + '/im1/' + x for x in self.file_list]
         self.post_images = [self.data_root + '/' + self.sub_set + '/im2/' + x for x in self.file_list]
         self.pre_gts = [self.data_root + '/' + self.sub_set + '/label1/' + x for x in self.file_list]
