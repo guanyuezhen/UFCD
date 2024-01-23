@@ -52,7 +52,7 @@ Supported change detection models:
 |BiSRNet/SSCDL|SCD|Bi-Temporal Semantic Reasoning for the Semantic Change Detection in HR Remote Sensing Images|[link](https://ieeexplore.ieee.org/document/9721305)|
 |ChangeOS|BDA|Building Damage Assessment for Rapid Disaster Response with a Deep Object-based Semantic Change Detection Framework: From Natural Disasters to Man-made Disasters|[link](https://www.sciencedirect.com/science/article/pii/S0034425721003564)|
 |ChangeOS-GRM|BDA|-|-|
-|AR-CDNet|BCD|Towards Accurate and Reliable Change Detection of Remote Sensing Images via Knowledge Review and Online Uncertainty Estimation|[link](https://arxiv.org/abs/2305.19513)|
+|AR-CDNet|BDA|Towards Accurate and Reliable Change Detection of Remote Sensing Images via Knowledge Review and Online Uncertainty Estimation|[link](https://arxiv.org/abs/2305.19513)|
 
 
 Supported binary change detection datasets:
