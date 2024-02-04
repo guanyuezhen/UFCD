@@ -98,7 +98,7 @@ class SCDEvaluation(BaseEvaluation):
                 pre_mask_i = pre_mask[i:i + 1]
                 post_mask_i = post_mask[i:i + 1]
                 change_mask_i = change_mask[i:i + 1]
-                change_mask_i = change_mask = torch.argmax(change_mask_i, dim=1, keepdim=True)
+                change_mask_i = torch.argmax(change_mask_i, dim=1, keepdim=True)
                 pre = (torch.argmax(pre_mask_i, dim=1) * change_mask_i.squeeze(1))[0].cpu().numpy()
                 scd_map = test_loader.dataset.index_to_color(pre)
                 scd_map = Image.fromarray(scd_map)
